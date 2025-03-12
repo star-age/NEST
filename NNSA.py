@@ -3,14 +3,27 @@ import pickle,json
 
 def available_models():
     model_list = ['BaSTI','PARSEC','MIST','SYCLIST','Dartmouth','YaPSI']
-    print('Available models: ' + ', '.join([model + 'Model' for model in model_list]))
+    model_sources = [
+        'http://basti-iac.oa-abruzzo.inaf.it/',
+        'https://stev.oapd.inaf.it/PARSEC/',
+        'https://waps.cfa.harvard.edu/MIST/',
+        'https://www.unige.ch/sciences/astro/evolution/en/database/syclist',
+        'https://rcweb.dartmouth.edu/stellar/',
+        'http://www.astro.yale.edu/yapsi/'
+    ]
+    for model,source in zip(model_list,model_sources):
+        print(model + 'Model (' + source + ')')
 
 class AgeModel:
     def __init__(self,model_name,use_sklearn=True):
+        self.model_name = model_name
         self.use_sklearn = use_sklearn
+        self.space_BP_RP = np.linspace(-1,3,101)
+        self.space_MG = np.linspace(-5,10,101)
+        self.space_MH = np.linspace(-3,0.5,11)
+        self.domain = np.load('domain.npy',allow_pickle=True).item()[model_name]
         self.neural_networks = {}
         self.scalers = {}
-        self.model_name = ''
         self.age_predictions = None
         self.load_neural_network(model_name)
 
@@ -18,7 +31,6 @@ class AgeModel:
         return self.model_name + ' Age Model'
 
     def load_neural_network(self, model_name):
-        self.model_name = model_name
         if self.use_sklearn:
             self.neural_networks['full'] = pickle.load(open('models/NN_{}.sav'.format(model_name), 'rb'))
             self.scalers['full'] = pickle.load(open('models/scaler_{}.sav'.format(model_name), 'rb'))
@@ -114,6 +126,40 @@ class AgeModel:
         
         return self.age_predictions
     
+    def check_domain(self,MH,MG,BPRP,eMH=None,eMG=None,eBPRP=None):
+        if type(MH) is not list:
+            MH = [MH]
+        if type(MG) is not list:
+            MG = [MG]
+        if type(BPRP) is not list:
+            BPRP = [BPRP]
+        
+        has_errors = eMH != None and eMG != None and eBPRP != None
+
+        if has_errors:
+            if type(eMH) is not list:
+                eMH = [eMH]
+            if type(eMG) is not list:
+                eMG = [eMG]
+            if type(eBPRP) is not list:
+                eBPRP = [eBPRP]
+        
+        in_domain = np.zeros(len(MH),dtype=bool)
+        for i in range(len(MH)):
+            if has_errors:
+                errors = [eBPRP[i],eMG[i],eMH[i]]
+            else:
+                errors = [0,0,0]
+            min_i_BPRP = np.maximum(np.digitize(BPRP[i] - errors[0],self.space_BP_RP) - 1,0)
+            max_i_BPRP = np.minimum(np.digitize(BPRP[i] + errors[0],self.space_BP_RP) - 1,99)
+            min_i_MG = np.maximum(np.digitize(MG[i] - errors[1],self.space_MG) - 1,0)
+            max_i_MG = np.minimum(np.digitize(MG[i] + errors[1],self.space_MG) - 1,99)
+            min_i_MH = np.maximum(np.digitize(MH[i] - errors[2],self.space_MH) - 1,0)
+            max_i_MH = np.minimum(np.digitize(MH[i] + errors[2],self.space_MH) - 1,9)
+
+            in_domain[i] = bool(np.any(self.domain[min_i_BPRP:max_i_BPRP+1,min_i_MG:max_i_MG+1,min_i_MH:max_i_MH+1]) == 1)
+        return in_domain
+    
     def propagate(self,X,neural_network,scaler):
         if self.use_sklearn:
             X = scaler.transform(X)
@@ -197,5 +243,4 @@ class YaPSIModel(AgeModel):
     def __init__(self,use_sklearn=True):
         super().__init__('YaPSI',use_sklearn)
 
-#TODO: add flavors to models (i.e. trained on cut CMD for optimal performance)
-#TODO: add alpha shapes to get bounds of each model
+#TODO: add flavors to models (e.g. trained on cut CMD for optimal performance)
