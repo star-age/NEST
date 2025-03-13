@@ -33,7 +33,8 @@ class AgeModel:
         self.domain = np.load('domain.npy',allow_pickle=True).item()[model_name]
         self.neural_networks = {}
         self.scalers = {}
-        self.age_predictions = None
+        self.samples = None
+        self.ages = None
         self.load_neural_network(model_name)
 
     def __str__(self):
@@ -75,6 +76,26 @@ class AgeModel:
                         GBP=None,GRP=None,
                         eGBP=None,eGRP=None,
                         n=1):
+        if type(met) is np.ndarray:
+            met = met.tolist()
+        if type(mag) is np.ndarray:
+            mag = mag.tolist()
+        if type(col) is np.ndarray:
+            col = col.tolist()
+        if type(emet) is np.ndarray:
+            emet = emet.tolist()
+        if type(emag) is np.ndarray:
+            emag = emag.tolist()
+        if type(ecol) is np.ndarray:
+            ecol = ecol.tolist()
+        if type(GBP) is np.ndarray:
+            GBP = GBP.tolist()
+        if type(GRP) is np.ndarray:
+            GRP = GRP.tolist()
+        if type(eGBP) is np.ndarray:
+            eGBP = eGBP.tolist()
+        if type(eGRP) is np.ndarray:
+            eGRP = eGRP.tolist()
         if type(met) is not list:
             met = [met]
         if type(mag) is not list:
@@ -133,7 +154,8 @@ class AgeModel:
             scaler = self.scalers['full']
             neural_network = self.neural_networks['full']
 
-        self.age_predictions = np.zeros((X.shape[0],n))
+        self.ages = np.zeros((X.shape[0],n))
+        self.samples = np.zeros((X.shape[0],n,X.shape[1]))
 
         if self.use_tqdm and (n > 1 or X.shape[0] > 1):
             loop = tqdm(range(X.shape[0]))
@@ -142,13 +164,27 @@ class AgeModel:
         for i in loop:
             if n > 1:
                 X_i = np.random.normal(X[i],X_errors[i],(n,X.shape[1]))
+                self.samples[i] = X_i
             else:
                 X_i = X[i].reshape(1,-1)
-            self.age_predictions[i] = self.propagate(X_i,neural_network,scaler)
+                self.samples[i] = X_i
+            self.ages[i] = self.propagate(X_i,neural_network,scaler)
         
-        return self.age_predictions
+        return self.ages
     
     def check_domain(self,met,mag,col,emet=None,emag=None,ecol=None):
+        if type(met) is np.ndarray:
+            met = met.tolist()
+        if type(mag) is np.ndarray:
+            mag = mag.tolist()
+        if type(col) is np.ndarray:
+            col = col.tolist()
+        if type(emet) is np.ndarray:
+            emet = emet.tolist()
+        if type(emag) is np.ndarray:
+            emag = emag.tolist()
+        if type(ecol) is np.ndarray:
+            ecol = ecol.tolist()
         if type(met) is not list:
             met = [met]
         if type(mag) is not list:
@@ -217,32 +253,32 @@ class AgeModel:
         return a[0]
     
     def mean_ages(self):
-        if self.age_predictions is None:
+        if self.ages is None:
             raise ValueError('No age predictions have been made yet')
-        return np.mean(self.age_predictions,axis=1)
+        return np.mean(self.ages,axis=1)
 
     def median_ages(self):
-        if self.age_predictions is None:
+        if self.ages is None:
             raise ValueError('No age predictions have been made yet')
-        return np.median(self.age_predictions,axis=1)
+        return np.median(self.ages,axis=1)
 
     def mode_ages(self):
-        if self.age_predictions is None:
+        if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         #TODO: choose number of bins appropriately
         modes = []
-        min_age = max(0,self.age_predictions.min())
-        max_age = max(14,self.age_predictions.max())
+        min_age = max(0,self.ages.min())
+        max_age = max(14,self.ages.max())
 
-        for i in range(len(self.age_predictions)):
-            hist, bins = np.histogram(self.age_predictions[i],bins=100,range=(min_age,max_age))
+        for i in range(len(self.ages)):
+            hist, bins = np.histogram(self.ages[i],bins=100,range=(min_age,max_age))
             modes.append(bins[np.argmax(hist)] + (bins[1]-bins[0])/2)
         return np.array(modes)
     
     def std_ages(self):
-        if self.age_predictions is None:
+        if self.ages is None:
             raise ValueError('No age predictions have been made yet')
-        return np.std(self.age_predictions,axis=1)
+        return np.std(self.ages,axis=1)
     
 class BaSTIModel(AgeModel):
     def __init__(self,use_sklearn=True):
