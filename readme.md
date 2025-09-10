@@ -4,5 +4,6 @@ A python package that provides neural networks to estimate ages of stars/star po
 - numpy
 - scikit (optional but recommended for speed)
 - tqdm (optional)
+- matplotlib (optional)
 
 The `tutorial.ipynb` notebook guides you through the package usage.

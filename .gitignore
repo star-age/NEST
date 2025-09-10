@@ -1,1 +1,34 @@
 __pycache__
+*.csv
+*.dat
+*.txt
+*.fits
+BaSTI/
+*.h5
+*.isc_*
+*.Gaia*
+*.iso.cmd
+*.trk
+*.zip
+*.DS_Store
+.DS_Store
+**/.DS_Store
+*.fits*
+Grid and Data/BaSTI_HST
+Grid and Data/BaSTI_HST2
+Grid and Data/BaSTI_HST3
+zhang*.npz
+*.pdf
+*.npy
+*.bak
+masruk isos
+*.error
+outputs
+BaSTI_HST_interpolated
+*.log
+Sanders_23.hdf5
+.ipynb_checkpoints/paper-checkpoint.ipynb
+INFO
+NEST.egg-info
+nest-docs
+old_stuff
