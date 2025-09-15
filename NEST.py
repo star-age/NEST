@@ -382,7 +382,7 @@ class AgeModel:
         self.stds = np.std(self.ages,axis=1)
         return self.stds
     
-    def HR_diagram(self,met=None,mag=None,col=None,age=None,isochrone_met=0,age_type='median',check_domain=True,**kwargs):
+    def HR_diagram(self,met=None,mag=None,col=None,age=None,isochrone_met=0,age_type='median',check_domain=True,fig=None,ax=None,**kwargs):
         if has_matplotlib == False:
             raise ImportError('matplotlib is required for HR diagram plotting')
         
@@ -417,8 +417,17 @@ class AgeModel:
             met = met[in_domain]
             mag = mag[in_domain]
             col = col[in_domain]
-        
-        fig,ax = plt.subplots(figsize=(10,7))
+
+        new_fig = False
+        if fig is None or ax is None:
+            new_fig = True
+            fig,ax = plt.subplots(figsize=(10,7))
+            if self.photometric_type == 'Gaia':
+                ax.set_xlabel(r'$(G_{BP}-G_{RP})_0$ [mag]')
+                ax.set_ylabel(r'$M_G$ [mag]')
+            elif self.photometric_type == 'HST':
+                ax.set_xlabel(r'$(F606W-F814W)$ [mag]')
+                ax.set_ylabel(r'$F606W$ [mag]')
 
         isochrones = get_isochrones(self)
         if isochrones is None:
@@ -488,17 +497,11 @@ class AgeModel:
 
         fig.canvas.mpl_connect("motion_notify_event", hover)
 
-        ax.set_xlim(-1,3)
-        ax.set_ylim(10,-5)
-        if self.photometric_type == 'Gaia':
-            ax.set_xlabel(r'$(G_{BP}-G_{RP})_0$ [mag]')
-            ax.set_ylabel(r'$M_G$ [mag]')
-        elif self.photometric_type == 'HST':
-            ax.set_xlabel(r'$(F606W-F814W)$ [mag]')
-            ax.set_ylabel(r'$F606W$ [mag]')
-
-        plt.tight_layout()
-        plt.show()
+        if new_fig:
+            ax.set_xlim(-1,3)
+            ax.set_ylim(10,-5)
+            plt.tight_layout()
+            plt.show()
 
 class BaSTIModel(AgeModel):
     def __init__(self,use_sklearn=True,use_tqdm=True):
