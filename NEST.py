@@ -443,17 +443,20 @@ class AgeModel:
         
         lines = []
         ages = []
-        for isochrone in isochrones:
+        if 'c' not in kwargs and 'color' not in kwargs:
+            kwargs['color'] = 'k'
+        if 'lw' not in kwargs and 'linewidth' not in kwargs:
+            kwargs['linewidth'] = 0.5
+        for i,isochrone in enumerate(isochrones):
             iso_age = isochrone['age']
             iso_mag = isochrone['MG']
             iso_col = isochrone['BP-RP']
-            if 'c' in kwargs:
-                kwargs.pop('c')
-            kwargs['color'] = 'k'
-            if 'lw' in kwargs:
-                kwargs.pop('lw')
-            kwargs['linewidth'] = 0.5
-            line, = ax.plot(iso_col, iso_mag, **kwargs)
+            
+            if i == 0 and 'label' in kwargs:
+                label = kwargs.pop('label')
+                line, = ax.plot(iso_col, iso_mag, label=label, **kwargs)
+            else:
+                line, = ax.plot(iso_col, iso_mag, **kwargs)
             lines.append(line)
             ages.append(iso_age)
 
