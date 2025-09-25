@@ -533,3 +533,7 @@ class YaPSIModel(AgeModel):
 class BaSTI_HSTModel(AgeModel):
     def __init__(self,use_sklearn=True,use_tqdm=True,photometric_type='HST'):
         super().__init__('BaSTI_HST',use_sklearn,use_tqdm,photometric_type)
+
+class BaSTI_HST_enhancedModel(AgeModel):
+    def __init__(self,use_sklearn=True,use_tqdm=True,photometric_type='HST'):
+        super().__init__('BaSTI_HST_enhanced',use_sklearn,use_tqdm,photometric_type)
