@@ -1,5 +1,6 @@
 import numpy as np
 import pickle,json,os,warnings,shutil,zipfile,urllib.request,json
+from ._version import __version__
 
 try:
     from tqdm import tqdm
@@ -28,6 +29,8 @@ warnings.showwarning = custom_warning
 
 def sanitize_input(input):
     if input is not None and type(input) is not list:
+        if hasattr(input,'ndim') and input.ndim == 0:
+                input = input.item()
         if hasattr(input,'tolist'):
             input = input.tolist()
         else:
@@ -40,7 +43,7 @@ def get_mode(arr,min_age=0,max_age=14,nbins=280):
     return bins[np.argmax(hist)] + (bins[1]-bins[0])/2
 
 def download_isochrones():
-    if input('Isochrone curves for plots do not exist. Download them ? (15.6Mb) [Y/n] (default: Y)') in ['n', 'N']:
+    if input('Isochrone curves for plots do not exist. Download them ? (27.9Mb) [Y/n] (default: Y)') not in ['Y','y','']:
             return None
     iso_url = "https://github.com/star-age/star-age.github.io/archive/refs/heads/main.zip"
     iso_dir = os.path.join(NEST_DIR, 'isochrones')
@@ -71,6 +74,8 @@ def download_isochrones():
     if os.path.exists(iso_dir):
         shutil.rmtree(iso_dir)
     shutil.move(src, iso_dir)
+    with open(os.path.join(iso_dir, 'version.txt'), 'w') as f:
+        f.write(__version__)
     shutil.rmtree(os.path.join(NEST_DIR, 'star-age.github.io-main'))
     os.remove(tmp_zip)
     print("Isochrones downloaded and extracted.")
@@ -80,6 +85,18 @@ def get_isochrones(model):
         return loaded_isochrones[model.model_name]
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones')) == False:
         download_isochrones()
+    
+    matching_version = True
+    if os.path.exists(os.path.join(NEST_DIR, 'isochrones/version.txt')):
+        with open(os.path.join(NEST_DIR, 'isochrones/version.txt'),'r') as f:
+            isochrone_version = f.read().strip()
+            if isochrone_version != __version__:
+                matching_version = False
+    else:
+        matching_version = False
+    if not matching_version:
+        warnings.warn('Isochrone version does not match NEST version. You may want to update the isochrones by running NEST.download_isochrones()')
+
     isochrone_path = os.path.join(NEST_DIR, 'isochrones', 'isochrones_' + model.model_name + '.json')
     if os.path.exists(isochrone_path):
         loaded_isochrones[model.model_name] = json.load(open(isochrone_path, 'r'))
@@ -200,6 +217,27 @@ class AgeModel:
         GRP = sanitize_input(GRP)
         eGBP = sanitize_input(eGBP)
         eGRP = sanitize_input(eGRP)
+
+        if np.isnan(met).any():
+            raise ValueError('Metallicity (met) cannot contain NaN values')
+        if np.isnan(mag).any():
+            raise ValueError('Absolute Magnitude (mag) cannot contain NaN values')
+        if np.isnan(col).any():
+            raise ValueError('Color (col) cannot contain NaN values')
+        if emet is not None and np.isnan(emet).any():
+            raise ValueError('Metallicity error (emet) cannot contain NaN values')
+        if emag is not None and np.isnan(emag).any():
+            raise ValueError('Absolute Magnitude error (emag) cannot contain NaN values')
+        if ecol is not None and np.isnan(ecol).any():
+            raise ValueError('Color error (ecol) cannot contain NaN values')
+        if GBP is not None and np.isnan(GBP).any():
+            raise ValueError('Gaia GBP magnitude (GBP) cannot contain NaN values')
+        if GRP is not None and np.isnan(GRP).any():
+            raise ValueError('Gaia GRP magnitude (GRP) cannot contain NaN values')
+        if eGBP is not None and np.isnan(eGBP).any():
+            raise ValueError('Gaia GBP magnitude error (eGBP) cannot contain NaN values')
+        if eGRP is not None and np.isnan(eGRP).any():
+            raise ValueError('Gaia GRP magnitude error (eGRP) cannot contain NaN values')
 
         if store_samples and n*len(met) > 1e6:
             warnings.warn('Storing samples for {} stars with {} samples for each will take a lot of memory. Consider setting store_samples=False to only store mean,median,mode and std of individual age distributions.'.format(len(met),n))
@@ -348,7 +386,7 @@ class AgeModel:
     def predict_nn(self,X,weights,biases):
         a = X
         for i in range(len(weights)):
-            a = self.dot(a,weights[i]) + biases[i]
+            a = self.dot(a,np.array(weights[i])) + np.array(biases[i])
             a = self.relu(a)
         return a[0]
     
