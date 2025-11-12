@@ -280,11 +280,12 @@ class AgeModel:
             scaler = self.scalers['full']
             neural_network = self.neural_networks['full']
 
-        self.ages = np.zeros((X.shape[0],n))
         if store_samples:
+            self.ages = np.zeros((X.shape[0],n))
             self.samples = np.zeros((X.shape[0],n,X.shape[1]))
         else:
-            self.samples = None
+            self.ages = None
+            self.samples = np.zeros((X.shape[0],X.shape[1]))
             self.medians = np.zeros(X.shape[0])
             self.means = np.zeros(X.shape[0])
             self.modes = np.zeros(X.shape[0])
@@ -316,6 +317,7 @@ class AgeModel:
                 self.means[i] = mean
                 self.modes[i] = mode
                 self.stds[i] = std
+                self.samples[i] = X[i]
 
         if store_samples:
             return self.ages
@@ -355,6 +357,18 @@ class AgeModel:
             in_domain[i] = bool(np.any(self.domain[min_i_col:max_i_col+1,min_i_mag:max_i_mag+1,min_i_met:max_i_met+1]) == 1)
         
         return in_domain
+    
+    def population_age(self,nbins=280,min_age=0,max_age=14):
+        if self.ages is None:
+            raise ValueError('No samples have been stored yet. Make sure to run ages_prediction() with store_samples=True')
+        global_pdf = np.ones(nbins)
+        for i in range(self.ages.shape[0]):
+            ages = self.ages[i]
+            pdf, bins = np.histogram(ages,bins=nbins,range=(min_age,max_age))
+            pdf = pdf.astype(float)
+            pdf += .01
+            global_pdf *= pdf
+        return bins[np.argmax(global_pdf)] + (bins[1]-bins[0])/2
     
     def propagate(self,X,neural_network,scaler):
         if self.use_sklearn:
@@ -420,7 +434,7 @@ class AgeModel:
         self.stds = np.std(self.ages,axis=1)
         return self.stds
     
-    def HR_diagram(self,met=None,mag=None,col=None,age=None,isochrone_met=0,age_type='median',check_domain=True,fig=None,ax=None,**kwargs):
+    def HR_diagram(self,isochrone_met=0,plot_isochrone=True,plot_stars=True,age_type='median',check_domain=True,fig=None,ax=None,**kwargs):
         if has_matplotlib == False:
             raise ImportError('matplotlib is required for HR diagram plotting')
         
@@ -428,11 +442,7 @@ class AgeModel:
             print('Age type not available, using median instead')
             age_type = 'median'
         
-        if met is not None and mag is not None and col is not None:
-            if age is None:
-                result = self.ages_prediction(met,mag,col,store_samples=False)
-                age = result[age_type]    
-        elif met is None and mag is None and col is None and age is None:
+        if plot_stars:
             if self.samples is not None and len(self.samples) > 0 and self.ages is not None and len(self.ages) == len(self.samples):
                 if age_type == 'median':
                     age = self.median_ages()
@@ -443,23 +453,44 @@ class AgeModel:
                 met = np.median(self.samples,axis=1)[:,0]
                 mag = np.median(self.samples,axis=1)[:,1]
                 col = np.median(self.samples,axis=1)[:,2]
-        else:
-            raise ValueError('Not a valid combination of arguments.')
+            elif self.medians is not None and len(self.medians) > 0:
+                if age_type == 'median':
+                    age = self.medians
+                elif age_type == 'mean':
+                    age = self.means
+                elif age_type == 'mode':
+                    age = self.modes
+                met = self.samples[:,0]
+                mag = self.samples[:,1]
+                col = self.samples[:,2]
+            else:
+                met = None
+                mag = None
+                col = None
+                age = None
+                plot_stars = False
 
-        if check_domain and met is not None:
-            in_domain = self.check_domain(met,mag,col)
-            age = age[in_domain]
-            met = np.array(sanitize_input(met))
-            mag = np.array(sanitize_input(mag))
-            col = np.array(sanitize_input(col))
-            met = met[in_domain]
-            mag = mag[in_domain]
-            col = col[in_domain]
+            if check_domain and met is not None:
+                in_domain = self.check_domain(met,mag,col)
+                age = age[in_domain]
+                met = np.array(sanitize_input(met))
+                mag = np.array(sanitize_input(mag))
+                col = np.array(sanitize_input(col))
+                met = met[in_domain]
+                mag = mag[in_domain]
+                col = col[in_domain]
+
+        if plot_stars == False and type(plot_isochrone) is bool and plot_isochrone:
+            plot_isochrone = False
 
         new_fig = False
         if fig is None or ax is None:
             new_fig = True
-            fig,ax = plt.subplots(figsize=(10,7))
+            if plot_stars == False and plot_isochrone == False:
+                figsize = (8,7)
+            else:
+                figsize = (10,7)
+            fig,ax = plt.subplots(figsize=figsize)
             if self.photometric_type == 'Gaia':
                 ax.set_xlabel(r'$(G_{BP}-G_{RP})_0$ [mag]')
                 ax.set_ylabel(r'$M_G$ [mag]')
@@ -471,7 +502,7 @@ class AgeModel:
         if isochrones is None:
             raise ValueError('Isochrones not available for this model')
         if type(isochrone_met) is not str:
-            if type (isochrone_met) is not float and type(isochrone_met) is not int:
+            if np.issubdtype(type(isochrone_met), np.number) is False:
                 raise ValueError('isochrone_met must be a float or int')
             isochrone_met = str(round(isochrone_met))
         if isochrone_met not in isochrones.keys():
@@ -481,6 +512,7 @@ class AgeModel:
         
         lines = []
         ages = []
+        colors = []
         if 'c' not in kwargs and 'color' not in kwargs:
             kwargs['color'] = 'k'
         if 'lw' not in kwargs and 'linewidth' not in kwargs:
@@ -497,8 +529,14 @@ class AgeModel:
                 line, = ax.plot(iso_col, iso_mag, **kwargs)
             lines.append(line)
             ages.append(iso_age)
+            colors.append('k')
 
-        if mag is not None and col is not None:
+        isochrone_ages = []
+        vmin = None
+        vmax = None
+        cb = None
+
+        if plot_stars:
             scatter = ax.scatter(
                 col,
                 mag,
@@ -507,31 +545,101 @@ class AgeModel:
                 zorder=4,
                 marker='*'
             )
-            plt.colorbar(scatter,label='Age [Gyr]')
+            ages_arr = np.array(age)
+            data_vmin = np.nanmin(ages_arr)
+            data_vmax = np.nanmax(ages_arr)
+            # If any values fall outside [0,14], restrict the colorbar to [0,14]
+            if data_vmin < 0 or data_vmax > 14:
+                vmin, vmax = 0.0, 14.0
+            else:
+                vmin, vmax = float(data_vmin), float(data_vmax)
+            # Ensure a valid range
+            if vmin >= vmax:
+                vmin, vmax = max(0.0, vmin - 0.5), min(14.0, vmax + 0.5)
+                if vmin >= vmax:
+                    vmin, vmax = 0.0, 14.0
+            scatter.set_clim(vmin, vmax)
+            cb = plt.colorbar(scatter, label='Age [Gyr]')
+            if (type(plot_isochrone) is bool and plot_isochrone != False) or type(plot_isochrone) in (float,int,list):
+                #if self.model_name != 'BaSTI':
+                    #raise ValueError('Plotting individual isochrones is only available for the BaSTI model at the moment')
+                if type(plot_isochrone) is bool and plot_isochrone:
+                    if self.ages is not None and self.ages.shape[1] > 1:
+                        isochrone_ages = [self.population_age()]
+                    else:
+                        isochrone_ages = [np.median(age)]
+        if type(plot_isochrone) is float or type(plot_isochrone) is int:
+            isochrone_ages = [float(plot_isochrone)]
+        elif type(plot_isochrone) is list:
+            isochrone_ages = plot_isochrone
+        
+        if len(isochrone_ages) > 0:
+            if vmin is None or vmax is None:
+                if len(isochrone_ages) > 1:
+                    vmin = min(isochrone_ages)
+                    vmax = max(isochrone_ages)
+                else:
+                    vmin = max(0, isochrone_ages[0] - 0.5)
+                    vmax = min(14, isochrone_ages[0] + 0.5)
+            for isochrone_age in isochrone_ages:
+                isochrone = self.get_closest_isochrone(isochrone_age)
+                norm = plt.Normalize(vmin, vmax)
+                cmap = plt.get_cmap('viridis')
+                color = cmap(norm(isochrone_age))
+                line, = ax.plot(
+                    isochrone['BP-RP'],
+                    isochrone['MG'],
+                    color=color,
+                    linewidth=2,
+                    zorder=5,
+                    label=f'Isochrone (age={isochrone_age:.2f} Gyr)'
+                )
+                lines.append(line)
+                ages.append(isochrone_age)
+                colors.append(color)
+            
+            if cb is None:
+                norm = plt.Normalize(vmin, vmax)
+                mappable = plt.cm.ScalarMappable(norm=norm, cmap='viridis')
+                mappable.set_array([vmin,vmax])
+                cb = plt.colorbar(mappable, ax=ax, label='Age [Gyr]')
 
         annot = ax.annotate("", xy=(0,0), xytext=(0,15), textcoords="offset points",
                             ha='center',
                             bbox=dict(boxstyle="round", fc="w"),
                             arrowprops=dict(arrowstyle="->"),zorder=5)
         annot.set_visible(False)
+        ax.legend()
 
-        def update_annot(line, event, age):
+        def update_annot(line, event, age, color):
             x, y = event.xdata, event.ydata
             annot.xy = (x, y)
             annot.set_text(f"Age: {age:.2f} Gyr")
+            annot.set_color(color)
+            annot.get_bbox_patch().set_edgecolor(color)
             annot.get_bbox_patch().set_facecolor('white')
             annot.get_bbox_patch().set_alpha(0.8)
 
         def hover(event):
             vis = annot.get_visible()
             if event.inaxes == ax:
-                for line, age in zip(lines, ages):
-                    cont, ind = line.contains(event)
-                    if cont:
-                        update_annot(line, event, age)
-                        annot.set_visible(True)
-                        fig.canvas.draw_idle()
-                        return
+                #First loop on non-black isochrones to prioritize them
+                for line, age, color in zip(lines, ages, colors):
+                    if color != 'k':
+                        cont, ind = line.contains(event)
+                        if cont:
+                            update_annot(line, event, age, color)
+                            annot.set_visible(True)
+                            fig.canvas.draw_idle()
+                            return
+                for line, age, color in zip(lines, ages, colors):
+                    if color == 'k':
+                        cont, ind = line.contains(event)
+                        if cont:
+                            update_annot(line, event, age, color)
+                            annot.set_visible(True)
+                            fig.canvas.draw_idle()
+                            return
             if vis:
                 annot.set_visible(False)
                 fig.canvas.draw_idle()
@@ -542,7 +650,107 @@ class AgeModel:
             ax.set_xlim(-1,3)
             ax.set_ylim(10,-5)
             plt.tight_layout()
-            plt.show()
+            return fig,ax
+    
+    def get_closest_isochrone(self,age_target):
+        isos_dic = get_isochrones(self)['0']
+        isos_dic = sorted(isos_dic, key=lambda x: x['age'])
+
+        if self.model_name == 'BaSTI':#Can interpolate isochrones for BaSTI model
+            # Flatten all isochrones into lists
+            ages_list = []
+            bp_rp_list = []
+            mg_list = []
+            m_list = []
+            for iso in isos_dic[::-1]:
+                n = len(iso['MG'])
+                ages_list.extend([iso['age']] * n)
+                bp_rp_list.extend(iso['BP-RP'])
+                mg_list.extend(iso['MG'])
+                m_list.extend(iso['M'])
+
+            ages_arr = np.array(ages_list)
+            bp_rp_arr = np.array(bp_rp_list)
+            mg_arr = np.array(mg_list)
+            m_arr = np.array(m_list)
+
+            unique_ages = np.unique(ages_arr)
+            age0, age1 = 0, 0
+            for i, age in enumerate(unique_ages[1:]):
+                if age >= age_target:
+                    age0 = unique_ages[i]
+                    age1 = age
+                    break
+
+            if age_target < age0:
+                age_target = age0
+            if age_target > age1:
+                age_target = age1
+
+            # Get indices for iso0 and iso1
+            idx0 = np.where(ages_arr == age0)[0]
+            idx1 = np.where(ages_arr == age1)[0]
+
+            # Interpolate between iso0 and iso1
+            bp_rp0 = bp_rp_arr[idx0]
+            mg0 = mg_arr[idx0]
+            m0 = m_arr[idx0]
+
+            bp_rp1 = bp_rp_arr[idx1]
+            mg1 = mg_arr[idx1]
+            m1 = m_arr[idx1]
+
+            # Make sure arrays are the same length for interpolation
+            n_points = min(len(bp_rp0), len(bp_rp1))
+            bp_rp0 = bp_rp0[:n_points]
+            mg0 = mg0[:n_points]
+            m0 = m0[:n_points]
+            bp_rp1 = bp_rp1[:n_points]
+            mg1 = mg1[:n_points]
+            m1 = m1[:n_points]
+
+            frac = (age_target - age0) / (age1 - age0) if age1 != age0 else 0
+
+            bp_rp_interp = bp_rp0 + (bp_rp1 - bp_rp0) * frac
+            mg_interp = mg0 + (mg1 - mg0) * frac
+            m_interp = (m0 + m1) * frac
+            age_interp = np.full(n_points, age_target)
+
+            # Special handling for age_target < 0.5
+            if age_target < 0.5:
+                for i in range(n_points):
+                    if mg_interp[i] >= 1:
+                        old_mg = mg_interp[i]
+                        old_bp_rp = bp_rp_interp[i]
+
+                        # Find closest MG in iso0 and iso1
+                        idx0_closest = np.abs(mg0 - old_mg).argmin()
+                        idx1_closest = np.abs(mg1 - old_mg).argmin()
+
+                        iso0_mg = mg0[idx0_closest]
+                        iso1_mg = mg1[idx1_closest]
+                        iso0_bp_rp = bp_rp0[idx0_closest]
+                        iso1_bp_rp = bp_rp1[idx1_closest]
+
+                        factor = old_mg - 1
+                        factor = min(max(factor, 0), 1)
+
+                        mg_interp[i] = old_mg * (1 - factor) + (iso0_mg + (iso1_mg - iso0_mg) * frac) * factor
+                        bp_rp_interp[i] = old_bp_rp * (1 - factor) + (iso0_bp_rp + (iso1_bp_rp - iso0_bp_rp) * frac) * factor
+        else:
+            # Find closest isochrone
+            closest_iso = min(isos_dic, key=lambda x: abs(x['age'] - age_target))
+            bp_rp_interp = np.array(closest_iso['BP-RP'])
+            mg_interp = np.array(closest_iso['MG'])
+            m_interp = np.array(closest_iso['M'])
+            age_interp = np.full(len(bp_rp_interp), closest_iso['age'])
+        # Return as a dict of arrays
+        return {
+            'age': age_interp,
+            'BP-RP': bp_rp_interp,
+            'MG': mg_interp,
+            'M': m_interp
+        }
 
 class BaSTIModel(AgeModel):
     def __init__(self,use_sklearn=True,use_tqdm=True):
