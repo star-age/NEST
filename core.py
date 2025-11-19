@@ -17,6 +17,12 @@ try:
     has_matplotlib = True
 except ImportError:
     has_matplotlib = False
+try:
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.preprocessing import StandardScaler
+    has_sklearn = True
+except ImportError:
+    has_sklearn = False
 
 NEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -120,21 +126,20 @@ def available_models():
 class AgeModel:
     def __init__(self,model_name,use_sklearn=True,use_tqdm=True,photometric_type=None):
         self.model_name = model_name
-        self.use_sklearn = use_sklearn
-        self.use_tqdm = use_tqdm
+        self.use_sklearn = use_sklearn and has_sklearn
+        self.use_tqdm = use_tqdm and has_tqdm
         if photometric_type == None:
             photometric_type = 'Gaia'
         self.photometric_type = photometric_type
-        if not has_tqdm and self.use_tqdm:
-            self.use_tqdm = False
         domain_path = os.path.join(NEST_DIR, 'domain.pkl')
         domain = pickle.load(open(domain_path, 'rb'))
         if model_name in domain:
             self.domain = domain[model_name]
-            self.space_col = self.domain['spaces'][0]
-            self.space_mag = self.domain['spaces'][1]
-            self.space_met = self.domain['spaces'][2]
+            self.space_col = np.array(self.domain['spaces'][0])
+            self.space_mag = np.array(self.domain['spaces'][1])
+            self.space_met = np.array(self.domain['spaces'][2])
             self.domain = self.domain['grid']
+            self.domain = np.array(self.domain,dtype=bool)
         else:
             self.domain = None
             self.space_col = None
@@ -160,17 +165,46 @@ class AgeModel:
         elif self.photometric_type == 'HST':
             _str += ', HST photometry: mag=F814W, col=(F606W-F814W).'
         return _str
+    
+    def load_mlp_and_scaler(self, filename):
+        with open(filename + '.mlp', "r") as f:
+            payload = json.load(f)
+
+        meta = payload["meta"]
+        mlp = MLPRegressor(hidden_layer_sizes=tuple(meta["hidden_layer_sizes"]),
+                        activation=meta["activation"],
+                        solver=meta["solver"],
+                        alpha=meta.get("alpha", 0.0001))
+
+        mlp.coefs_ = [np.array(c, dtype=float) for c in payload["coefs"]]
+        mlp.intercepts_ = [np.array(b, dtype=float) for b in payload["intercepts"]]
+
+        mlp.n_layers_ = len(mlp.coefs_) + 1
+        mlp.n_outputs_ = mlp.coefs_[-1].shape[1]
+        mlp.out_activation_ = meta.get("out_activation_", "identity")
+        mlp.n_features_in_ = mlp.coefs_[0].shape[0]
+        mlp.n_iter_ = 1
+
+        with open(filename + '.scaler', "r") as f:
+            payload = json.load(f)
+
+        scaler = StandardScaler()
+        scaler.mean_ = np.array(payload["mean_"], dtype=float)
+        scaler.scale_ = np.array(payload["scale_"], dtype=float)
+        scaler.n_features_in_ = len(scaler.mean_)
+
+        return {'NN':mlp, 'Scaler':scaler}
 
     def load_neural_network(self, model_name):
         if self.use_sklearn:
-            model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name}.sav')
-            model_path_reduced = os.path.join(NEST_DIR, 'models', f'{model_name}_BPRP.sav')
-            if os.path.exists(model_path_full):
-                nn = pickle.load(open(model_path_full, 'rb'))
+            model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name}')
+            model_path_reduced = os.path.join(NEST_DIR, 'models', f'{model_name}_BPRP')
+            if os.path.exists(model_path_full + '.mlp'):
+                nn = self.load_mlp_and_scaler(os.path.join(NEST_DIR, 'models', model_name))
                 self.neural_networks['full'] = nn['NN']
                 self.scalers['full'] = nn['Scaler']
-            if os.path.exists(model_path_reduced):
-                nn = pickle.load(open(model_path_reduced, 'rb'))
+            if os.path.exists(model_path_reduced + '.mlp'):
+                nn = self.load_mlp_and_scaler(os.path.join(NEST_DIR, 'models', model_name + '_BPRP'))
                 self.neural_networks['reduced'] = nn['NN']
                 self.scalers['reduced'] = nn['Scaler']
         else:
@@ -324,7 +358,7 @@ class AgeModel:
         else:
             return {'mean':self.means,'median':self.medians,'mode':self.modes,'std':self.stds}
 
-    def check_domain(self,met,mag,col,emet=None,emag=None,ecol=None):
+    def check_domain(self,met,mag,col,emet=None,emag=None,ecol=None,use_tqdm=True):
         if self.domain is None:
             raise ValueError('No domain defined for this model')
         met = sanitize_input(met)
@@ -338,7 +372,7 @@ class AgeModel:
         
         in_domain = np.zeros(len(met),dtype=bool)
 
-        if self.use_tqdm and len(met) > 1:
+        if self.use_tqdm and len(met) > 1 and use_tqdm:
             loop = tqdm(range(len(met)))
         else:
             loop = range(len(met))
@@ -358,17 +392,41 @@ class AgeModel:
         
         return in_domain
     
-    def population_age(self,nbins=280,min_age=0,max_age=14):
+    def population_age(self,nbins=280,min_age=0,max_age=14,check_domain=True):
         if self.ages is None:
             raise ValueError('No samples have been stored yet. Make sure to run ages_prediction() with store_samples=True')
-        global_pdf = np.ones(nbins)
-        for i in range(self.ages.shape[0]):
-            ages = self.ages[i]
-            pdf, bins = np.histogram(ages,bins=nbins,range=(min_age,max_age))
-            pdf = pdf.astype(float)
-            pdf += .01
-            global_pdf *= pdf
-        return bins[np.argmax(global_pdf)] + (bins[1]-bins[0])/2
+        
+        if check_domain and self.samples is not None:
+            in_domain = self.check_domain(
+                np.median(self.samples[:,:,0],axis=1),
+                np.median(self.samples[:,:,1],axis=1),
+                np.median(self.samples[:,:,2],axis=1),
+                use_tqdm=self.use_tqdm
+            )
+            ages = self.ages[in_domain]
+
+        pdfs = []
+        loop = range(100)
+        if self.use_tqdm:
+            loop = tqdm(loop)
+        min_offset = 0.01
+        if len(ages) > 1_000:
+            min_offset = 0.1
+        for i in loop:
+            random_star_indices = np.random.choice(list(range(ages.shape[0])), size=ages.shape[0], replace=True)
+            random_star_ages = ages[random_star_indices,:]
+            global_pdf = np.ones(nbins)
+            for j in range(random_star_ages.shape[0]):
+                age = random_star_ages[j]
+                pdf, bins = np.histogram(age,bins=nbins,range=(min_age,max_age))
+                pdf = pdf.astype(float)
+                pdf += min_offset
+                global_pdf *= pdf
+            best_age = bins[np.argmax(global_pdf)] + (bins[1]-bins[0])/2
+            if best_age != bins[0]+(bins[1]-bins[0])/2:
+                pdfs.append(bins[np.argmax(global_pdf)] + (bins[1]-bins[0])/2)
+
+        return np.median(pdfs)
     
     def propagate(self,X,neural_network,scaler):
         if self.use_sklearn:
@@ -471,7 +529,7 @@ class AgeModel:
                 plot_stars = False
 
             if check_domain and met is not None:
-                in_domain = self.check_domain(met,mag,col)
+                in_domain = self.check_domain(met,mag,col,use_tqdm=False)
                 age = age[in_domain]
                 met = np.array(sanitize_input(met))
                 mag = np.array(sanitize_input(mag))
@@ -513,6 +571,8 @@ class AgeModel:
         lines = []
         ages = []
         colors = []
+        has_labels = False
+
         if 'c' not in kwargs and 'color' not in kwargs:
             kwargs['color'] = 'k'
         if 'lw' not in kwargs and 'linewidth' not in kwargs:
@@ -525,6 +585,7 @@ class AgeModel:
             if i == 0 and 'label' in kwargs:
                 label = kwargs.pop('label')
                 line, = ax.plot(iso_col, iso_mag, label=label, **kwargs)
+                has_labels = True
             else:
                 line, = ax.plot(iso_col, iso_mag, **kwargs)
             lines.append(line)
@@ -536,7 +597,7 @@ class AgeModel:
         vmax = None
         cb = None
 
-        if plot_stars:
+        if plot_stars and len(age) > 0:
             scatter = ax.scatter(
                 col,
                 mag,
@@ -594,6 +655,7 @@ class AgeModel:
                     zorder=5,
                     label=f'Isochrone (age={isochrone_age:.2f} Gyr)'
                 )
+                has_labels = True
                 lines.append(line)
                 ages.append(isochrone_age)
                 colors.append(color)
@@ -603,13 +665,15 @@ class AgeModel:
                 mappable = plt.cm.ScalarMappable(norm=norm, cmap='viridis')
                 mappable.set_array([vmin,vmax])
                 cb = plt.colorbar(mappable, ax=ax, label='Age [Gyr]')
+                has_labels = True
 
         annot = ax.annotate("", xy=(0,0), xytext=(0,15), textcoords="offset points",
                             ha='center',
                             bbox=dict(boxstyle="round", fc="w"),
                             arrowprops=dict(arrowstyle="->"),zorder=5)
         annot.set_visible(False)
-        ax.legend()
+        if has_labels:
+            ax.legend()
 
         def update_annot(line, event, age, color):
             x, y = event.xdata, event.ydata
