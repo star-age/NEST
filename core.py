@@ -244,15 +244,15 @@ class AgeModel:
     def load_mlp_and_scaler(self, filename):
         with open(filename + '.mlp', "r") as f:
             payload = json.load(f)
-
-        meta = payload["meta"]
+        nn_payload = payload['mlp']
+        meta = nn_payload["meta"]
         mlp = MLPRegressor(hidden_layer_sizes=tuple(meta["hidden_layer_sizes"]),
                         activation=meta["activation"],
                         solver=meta["solver"],
                         alpha=meta.get("alpha", 0.0001))
 
-        mlp.coefs_ = [np.array(c, dtype=float) for c in payload["coefs"]]
-        mlp.intercepts_ = [np.array(b, dtype=float) for b in payload["intercepts"]]
+        mlp.coefs_ = [np.array(c, dtype=float) for c in nn_payload["coefs"]]
+        mlp.intercepts_ = [np.array(b, dtype=float) for b in nn_payload["intercepts"]]
 
         mlp.n_layers_ = len(mlp.coefs_) + 1
         mlp.n_outputs_ = mlp.coefs_[-1].shape[1]
@@ -260,12 +260,11 @@ class AgeModel:
         mlp.n_features_in_ = mlp.coefs_[0].shape[0]
         mlp.n_iter_ = 1
 
-        with open(filename + '.scaler', "r") as f:
-            payload = json.load(f)
+        scaler_payload = payload['scaler']
 
         scaler = StandardScaler()
-        scaler.mean_ = np.array(payload["mean_"], dtype=float)
-        scaler.scale_ = np.array(payload["scale_"], dtype=float)
+        scaler.mean_ = np.array(scaler_payload["mean_"], dtype=float)
+        scaler.scale_ = np.array(scaler_payload["scale_"], dtype=float)
         scaler.n_features_in_ = len(scaler.mean_)
 
         return {'NN':mlp, 'Scaler':scaler}
@@ -283,27 +282,27 @@ class AgeModel:
                 self.neural_networks['reduced'] = nn['NN']
                 self.scalers['reduced'] = nn['Scaler']
         else:
-            model_path_full = os.path.join(NEST_DIR, 'models', f'NN_{model_name}.json')
-            model_path_reduced = os.path.join(NEST_DIR, 'models', f'NN_{model_name}_BPRP.json')
+            model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name}.mlp')
+            model_path_reduced = os.path.join(NEST_DIR, 'models', f'{model_name}_BPRP.mlp')
             if os.path.exists(model_path_full):
-                json_nn = json.load(open(model_path_full, 'r'))
+                nn_json = json.load(open(model_path_full, 'r'))
                 self.neural_networks['full'] = {
-                    'weights':json_nn['weights'],
-                    'biases':json_nn['biases']
+                    'weights':nn_json['mlp']['coefs'],
+                    'biases':nn_json['mlp']['intercepts']
                 }
                 self.scalers['full'] = {
-                    'means':json_nn['means'],
-                    'stds':json_nn['stds']
+                    'means':nn_json['scaler']['mean_'],
+                    'stds':nn_json['scaler']['scale_']
                 }
             if os.path.exists(model_path_reduced):
-                json_nn = json.load(open(model_path_reduced, 'r'))
+                nn_json = json.load(open(model_path_reduced, 'r'))
                 self.neural_networks['reduced'] = {
-                    'weights':json_nn['weights'],
-                    'biases':json_nn['biases']
+                    'weights':nn_json['mlp']['coefs'],
+                    'biases':nn_json['mlp']['intercepts']
                 }
                 self.scalers['reduced'] = {
-                    'means':json_nn['means'],
-                    'stds':json_nn['stds']
+                    'means':nn_json['scaler']['mean_'],
+                    'stds':nn_json['scaler']['scale_']
                 }
 
     def ages_prediction(self,
