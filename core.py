@@ -14,6 +14,8 @@ except ImportError:
     has_requests = False
 try:
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Polygon
+    from matplotlib.colors import ListedColormap
     has_matplotlib = True
 except ImportError:
     has_matplotlib = False
@@ -32,6 +34,16 @@ def custom_warning(message, category, filename, lineno, file=None, line=None):
     print(f"{category.__name__}: {message}")
 
 warnings.showwarning = custom_warning
+
+def import_cmaps():
+    cmaps = {}
+    if has_matplotlib:
+        cmaps_colors = dict(np.load(os.path.join(NEST_DIR, 'cmaps.npz')))
+        for name, colors in cmaps_colors.items():
+            cmaps[name] = ListedColormap(colors)
+    return cmaps
+
+cmaps = import_cmaps()
 
 def sanitize_input(input):
     if input is not None and type(input) is not list:
@@ -123,6 +135,67 @@ def available_models():
     for model,source in zip(model_list,model_sources):
         print(model + 'Model (' + source + ')')
 
+class PopulationAge:
+    __array_priority__ = 1000
+    def __init__(self,age,age_error):
+        self.age50 = age
+        self.age16 = age_error[0]
+        self.age84 = age_error[1]
+        self._data = [self.age50,self.age16,self.age84]
+
+    def __getitem__(self, idx):
+        return self._data[idx]
+    
+    def __radd__(self, other):
+        if isinstance(other, list):
+            return other + list(self)
+        return NotImplemented
+
+    def __array__(self, dtype=None, copy=None):
+        arr = np.asarray(self._data, dtype=dtype)
+        if copy is False:
+            return arr
+        return arr.copy()
+    
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        arrays = [np.asarray(i) if isinstance(i, PopulationAge) else i
+                for i in inputs]
+        result = getattr(ufunc, method)(*arrays, **kwargs)
+        return result
+
+    def __array_function__(self, func, types, args, kwargs):
+        if not all(issubclass(t, PopulationAge) for t in types):
+            return NotImplemented
+        arrays = [np.asarray(arg) for arg in args]
+        return func(*arrays, **kwargs)
+
+    def __setitem__(self, idx, value):
+        self._data[idx] = value
+        self.age50, self.age16, self.age84 = self._data
+
+    def __len__(self):
+        return 3
+
+    def __iter__(self):
+        yield from self._data
+
+    def __contains__(self, x):
+        return x in self._data
+
+    def __repr__(self):
+        return self.__str__()
+
+    def _repr_latex_(self):
+        return self.__str__()
+
+    def __str__(self):
+        up = self.age84 - self.age50
+        down = self.age50 - self.age16
+        down_s = f"-{down:.2f}"
+        up_s = f"+{up:.2f}"
+        return f"$\\tau={self.age50:.2f}_{{{down_s}}}^{{{up_s}}}\\,\\mathrm{{Gyr}}$"
+
+
 class AgeModel:
     def __init__(self,model_name,use_sklearn=True,use_tqdm=True,photometric_type=None):
         self.model_name = model_name
@@ -153,6 +226,8 @@ class AgeModel:
         self.means = None
         self.modes = None
         self.stds = None
+        self.pop_age = None
+        self.pop_age_error = None
         self.load_neural_network(self.model_name)
 
     def __repr__(self):
@@ -239,7 +314,6 @@ class AgeModel:
                         n=1,
                         store_samples=True,
                         min_age=0,max_age=14):
-        
         
         met = sanitize_input(met)
         mag = sanitize_input(mag)
@@ -392,7 +466,7 @@ class AgeModel:
         
         return in_domain
     
-    def population_age(self,nbins=280,min_age=0,max_age=14,check_domain=True):
+    def population_age(self,nbins=280,min_age=0,max_age=14,check_domain=True,n_mc=100,use_tqdm=True):
         if self.ages is None:
             raise ValueError('No samples have been stored yet. Make sure to run ages_prediction() with store_samples=True')
         
@@ -401,32 +475,65 @@ class AgeModel:
                 np.median(self.samples[:,:,0],axis=1),
                 np.median(self.samples[:,:,1],axis=1),
                 np.median(self.samples[:,:,2],axis=1),
-                use_tqdm=self.use_tqdm
+                use_tqdm=False
             )
             ages = self.ages[in_domain]
+        else:
+            ages = self.ages
+
+        ages = np.array([age for age in ages if np.any(np.isnan(age)) == False])
+
+        if len(ages) == 0:
+            raise ValueError('No valid age samples available to compute population age (maybe all stars are out of domain ?)')
+        
+        if ages.shape[1] == 1:
+            return np.median(ages)
 
         pdfs = []
-        loop = range(100)
-        if self.use_tqdm:
+
+        loop = range(n_mc)
+        if self.use_tqdm and use_tqdm:
             loop = tqdm(loop)
-        min_offset = 0.01
-        if len(ages) > 1_000:
-            min_offset = 0.1
+        epsilon = np.clip(1/ages.shape[0],0.001,0.1)
         for i in loop:
             random_star_indices = np.random.choice(list(range(ages.shape[0])), size=ages.shape[0], replace=True)
+            random_star_indices = random_star_indices.astype(int)
             random_star_ages = ages[random_star_indices,:]
             global_pdf = np.ones(nbins)
             for j in range(random_star_ages.shape[0]):
                 age = random_star_ages[j]
                 pdf, bins = np.histogram(age,bins=nbins,range=(min_age,max_age))
                 pdf = pdf.astype(float)
-                pdf += min_offset
-                global_pdf *= pdf
+                pdf += epsilon
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    global_pdf *= pdf
             best_age = bins[np.argmax(global_pdf)] + (bins[1]-bins[0])/2
             if best_age != bins[0]+(bins[1]-bins[0])/2:
                 pdfs.append(bins[np.argmax(global_pdf)] + (bins[1]-bins[0])/2)
 
-        return np.median(pdfs)
+        if len(pdfs) == 0:
+            warnings.warn('No valid population age could be computed from the samples')
+            return np.nan,np.nan
+
+        population_age = np.median(pdfs)
+
+        best_ages = []
+        
+        for j in range(ages.shape[0]):
+            age = ages[j]
+            pdf, bins = np.histogram(age,bins=nbins,range=(min_age,max_age))
+            pdf = pdf.astype(float)
+            best_age = bins[np.argmax(pdf)] + (bins[1]-bins[0])/2
+            best_ages.append(best_age)
+
+        population_age_p16 = np.percentile(best_ages,16)
+        population_age_p84 = np.percentile(best_ages,84)
+
+        self.pop_age = population_age
+        self.pop_age_error = (population_age_p16,population_age_p84)
+
+        return PopulationAge(population_age, (population_age_p16, population_age_p84))
     
     def propagate(self,X,neural_network,scaler):
         if self.use_sklearn:
@@ -492,9 +599,35 @@ class AgeModel:
         self.stds = np.std(self.ages,axis=1)
         return self.stds
     
-    def HR_diagram(self,isochrone_met=0,plot_isochrone=True,plot_stars=True,age_type='median',check_domain=True,fig=None,ax=None,**kwargs):
+    def HR_diagram(self,
+                   isochrone_met=0,
+                   plot_isochrone=True,plot_stars=True,plot_isochrone_uncertainty=True,
+                   isochrone_ages=None,isochrone_ages_std=None,
+                   age_type='median',
+                   check_domain=True,
+                   fig=None,ax=None,
+                   star_cmap=cmaps['tempo_R'],
+                   isochrone_cmap=cmaps['acton'],
+                   loc_legend='best',
+                   axis_fontsize=12,
+                   legend_fontsize=10,
+                   colorbar_fontsize=10,
+                   selected_isochrone_linewidth=2,
+                   uncertainty_alpha=0.25,
+                   colorbar_lims=None,
+                   **kwargs):
         if has_matplotlib == False:
             raise ImportError('matplotlib is required for HR diagram plotting')
+
+        if type(star_cmap) is str:
+            star_cmap = plt.get_cmap(star_cmap)
+        if type(isochrone_cmap) is str:
+            isochrone_cmap = plt.get_cmap(isochrone_cmap)
+
+        if isochrone_ages is None:
+            isochrone_ages = []
+        if isochrone_ages_std is None:
+            isochrone_ages_std = []
         
         if age_type not in ('median','mean','mode'):
             print('Age type not available, using median instead')
@@ -550,12 +683,12 @@ class AgeModel:
                 figsize = (10,7)
             fig,ax = plt.subplots(figsize=figsize)
             if self.photometric_type == 'Gaia':
-                ax.set_xlabel(r'$(G_{BP}-G_{RP})_0$ [mag]')
-                ax.set_ylabel(r'$M_G$ [mag]')
+                ax.set_xlabel(r'$(G_{BP}-G_{RP})_0$ [mag]', fontsize=axis_fontsize)
+                ax.set_ylabel(r'$M_G$ [mag]', fontsize=axis_fontsize)
             elif self.photometric_type == 'HST':
-                ax.set_xlabel(r'$(F606W-F814W)$ [mag]')
-                ax.set_ylabel(r'$F606W$ [mag]')
-
+                ax.set_xlabel(r'$(F606W-F814W)$ [mag]', fontsize=axis_fontsize)
+                ax.set_ylabel(r'$F606W$ [mag]', fontsize=axis_fontsize)
+            ax.tick_params(labelsize=axis_fontsize,axis='both')
         isochrones = get_isochrones(self)
         if isochrones is None:
             raise ValueError('Isochrones not available for this model')
@@ -577,6 +710,8 @@ class AgeModel:
             kwargs['color'] = 'k'
         if 'lw' not in kwargs and 'linewidth' not in kwargs:
             kwargs['linewidth'] = 0.5
+        if 'alpha' not in kwargs:
+            kwargs['alpha'] = 0.25
         for i,isochrone in enumerate(isochrones):
             iso_age = isochrone['age']
             iso_mag = isochrone['MG']
@@ -592,7 +727,6 @@ class AgeModel:
             ages.append(iso_age)
             colors.append('k')
 
-        isochrone_ages = []
         vmin = None
         vmax = None
         cb = None
@@ -602,38 +736,48 @@ class AgeModel:
                 col,
                 mag,
                 c=age,
-                cmap='viridis',
+                cmap=star_cmap,
                 zorder=4,
                 marker='*'
             )
             ages_arr = np.array(age)
             data_vmin = np.nanmin(ages_arr)
             data_vmax = np.nanmax(ages_arr)
-            # If any values fall outside [0,14], restrict the colorbar to [0,14]
+
             if data_vmin < 0 or data_vmax > 14:
                 vmin, vmax = 0.0, 14.0
             else:
                 vmin, vmax = float(data_vmin), float(data_vmax)
-            # Ensure a valid range
+
             if vmin >= vmax:
                 vmin, vmax = max(0.0, vmin - 0.5), min(14.0, vmax + 0.5)
                 if vmin >= vmax:
                     vmin, vmax = 0.0, 14.0
+            
+            if colorbar_lims is not None and (type(colorbar_lims) is tuple or type(colorbar_lims) is list) and len(colorbar_lims) == 2:
+                vmin, vmax = colorbar_lims
+
             scatter.set_clim(vmin, vmax)
-            cb = plt.colorbar(scatter, label='Age [Gyr]')
-            if (type(plot_isochrone) is bool and plot_isochrone != False) or type(plot_isochrone) in (float,int,list):
-                #if self.model_name != 'BaSTI':
-                    #raise ValueError('Plotting individual isochrones is only available for the BaSTI model at the moment')
-                if type(plot_isochrone) is bool and plot_isochrone:
-                    if self.ages is not None and self.ages.shape[1] > 1:
-                        isochrone_ages = [self.population_age()]
-                    else:
-                        isochrone_ages = [np.median(age)]
-        if type(plot_isochrone) is float or type(plot_isochrone) is int:
-            isochrone_ages = [float(plot_isochrone)]
-        elif type(plot_isochrone) is list:
-            isochrone_ages = plot_isochrone
-        
+            cb = plt.colorbar(scatter)
+            cb.set_label('Age [Gyr]', fontsize=colorbar_fontsize)
+            cb.ax.tick_params(labelsize=colorbar_fontsize)
+
+        if type(isochrone_ages) is float or type(isochrone_ages) is int:
+            isochrone_ages = [float(isochrone_ages)]
+        if type(isochrone_ages_std) is float or type(isochrone_ages_std) is int:
+            isochrone_ages_std = [float(isochrone_ages_std)]
+        while len(isochrone_ages_std) < len(isochrone_ages):
+            isochrone_ages_std += [None]
+        if plot_isochrone:
+            if self.ages is not None and self.ages.shape[1] > 1:
+                if self.pop_age is None:
+                    self.population_age(check_domain=check_domain,use_tqdm=False)
+                isochrone_ages += [self.pop_age]
+                isochrone_ages_std += [self.pop_age_error]
+            else:
+                isochrone_ages += [np.median(age)]
+                isochrone_ages_std += [np.std(age)]
+
         if len(isochrone_ages) > 0:
             if vmin is None or vmax is None:
                 if len(isochrone_ages) > 1:
@@ -642,30 +786,41 @@ class AgeModel:
                 else:
                     vmin = max(0, isochrone_ages[0] - 0.5)
                     vmax = min(14, isochrone_ages[0] + 0.5)
-            for isochrone_age in isochrone_ages:
+            for i, (isochrone_age, isochrone_age_std) in enumerate(zip(isochrone_ages,isochrone_ages_std)):
                 isochrone = self.get_closest_isochrone(isochrone_age)
-                norm = plt.Normalize(vmin, vmax)
-                cmap = plt.get_cmap('viridis')
-                color = cmap(norm(isochrone_age))
+                color = isochrone_cmap((i+1)/(len(isochrone_ages)+1))
+
+                if isochrone_age_std is not None and plot_isochrone_uncertainty:
+                    if type(isochrone_age_std) is tuple or type(isochrone_age_std) is list:
+                        isochrone_low = self.get_closest_isochrone(isochrone_age_std[0])
+                        isochrone_upp = self.get_closest_isochrone(isochrone_age_std[1])
+                        label = r'$\tau$' + f'={isochrone_age:.2f} ' + r'$^{+' + f'{isochrone_age_std[1]-isochrone_age:.2f}' + r'}_{-' + f'{isochrone_age - isochrone_age_std[0]:.2f}' + r'}$ Gyr'
+                    else:
+                        label = r'$\tau$' + f'={isochrone_age:.2f} ' + r'$\pm$' + f' {isochrone_age_std:.2f} Gyr'
+                        isochrone_low = self.get_closest_isochrone(isochrone_age - isochrone_age_std)
+                        isochrone_upp = self.get_closest_isochrone(isochrone_age + isochrone_age_std)
+                    verts = np.concatenate([
+                        np.column_stack([isochrone_low['BP-RP'], isochrone_low['MG']]),
+                        np.column_stack([isochrone_upp['BP-RP'][::-1], isochrone_upp['MG'][::-1]])
+                    ])
+                    poly = Polygon(verts, closed=True, facecolor=color, alpha=uncertainty_alpha, edgecolor=None, zorder=6)
+                    ax.add_patch(poly)
+                else:
+                    label = r'$\tau$' + f'={isochrone_age:.2f} Gyr'
+
                 line, = ax.plot(
                     isochrone['BP-RP'],
                     isochrone['MG'],
                     color=color,
-                    linewidth=2,
+                    linewidth=selected_isochrone_linewidth,
                     zorder=5,
-                    label=f'Isochrone (age={isochrone_age:.2f} Gyr)'
+                    label=label
                 )
+
                 has_labels = True
                 lines.append(line)
                 ages.append(isochrone_age)
                 colors.append(color)
-            
-            if cb is None:
-                norm = plt.Normalize(vmin, vmax)
-                mappable = plt.cm.ScalarMappable(norm=norm, cmap='viridis')
-                mappable.set_array([vmin,vmax])
-                cb = plt.colorbar(mappable, ax=ax, label='Age [Gyr]')
-                has_labels = True
 
         annot = ax.annotate("", xy=(0,0), xytext=(0,15), textcoords="offset points",
                             ha='center',
@@ -673,7 +828,7 @@ class AgeModel:
                             arrowprops=dict(arrowstyle="->"),zorder=5)
         annot.set_visible(False)
         if has_labels:
-            ax.legend()
+            ax.legend(loc=loc_legend, fontsize=legend_fontsize)
 
         def update_annot(line, event, age, color):
             x, y = event.xdata, event.ydata
