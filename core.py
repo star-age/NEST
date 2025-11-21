@@ -671,13 +671,10 @@ class AgeModel:
                 mag = mag[in_domain]
                 col = col[in_domain]
 
-        if plot_stars == False and type(plot_isochrone) is bool and plot_isochrone:
-            plot_isochrone = False
-
         new_fig = False
         if fig is None or ax is None:
             new_fig = True
-            if plot_stars == False and plot_isochrone == False:
+            if plot_stars == False:
                 figsize = (8,7)
             else:
                 figsize = (10,7)
