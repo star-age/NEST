@@ -60,14 +60,15 @@ def get_mode(arr,min_age=0,max_age=14,nbins=280):
     hist, bins = np.histogram(arr,bins=nbins,range=(min_age,max_age))
     return bins[np.argmax(hist)] + (bins[1]-bins[0])/2
 
-def download_isochrones():
+def download_isochrones(verbose=True):
     if input('Isochrone curves for plots do not exist. Download them ? (27.9Mb) [Y/n] (default: Y)') not in ['Y','y','']:
             return None
     iso_url = "https://github.com/star-age/star-age.github.io/archive/refs/heads/main.zip"
     iso_dir = os.path.join(NEST_DIR, 'isochrones')
     tmp_zip = os.path.join(NEST_DIR, 'isochrones_tmp.zip')
 
-    print("Downloading isochrones from GitHub...")
+    if verbose:
+        print("Downloading isochrones from GitHub...")
     if has_requests and has_tqdm:
         response = requests.get(iso_url, stream=True)
         total = int(response.headers.get('content-length', 0))
@@ -96,13 +97,14 @@ def download_isochrones():
         f.write(__version__)
     shutil.rmtree(os.path.join(NEST_DIR, 'star-age.github.io-main'))
     os.remove(tmp_zip)
-    print("Isochrones downloaded and extracted.")
+    if verbose:
+        print("Isochrones downloaded and extracted.")
 
 def get_isochrones(model):
     if model.model_name in loaded_isochrones:
         return loaded_isochrones[model.model_name]
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones')) == False:
-        download_isochrones()
+        download_isochrones(verbose=model.verbose)
     
     matching_version = True
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones/version.txt')):
@@ -112,7 +114,7 @@ def get_isochrones(model):
                 matching_version = False
     else:
         matching_version = False
-    if not matching_version:
+    if not matching_version and model.verbose:
         warnings.warn('Isochrone version does not match NEST version. You may want to update the isochrones by running NEST.download_isochrones()')
 
     isochrone_path = os.path.join(NEST_DIR, 'isochrones', 'isochrones_' + model.model_name + '.json')
@@ -197,10 +199,11 @@ class PopulationAge:
 
 
 class AgeModel:
-    def __init__(self,model_name,use_sklearn=True,use_tqdm=True,photometric_type=None):
+    def __init__(self,model_name,use_sklearn=True,use_tqdm=True,photometric_type=None,verbose=True):
         self.model_name = model_name
         self.use_sklearn = use_sklearn and has_sklearn
         self.use_tqdm = use_tqdm and has_tqdm
+        self.verbose = verbose
         if photometric_type == None:
             photometric_type = 'Gaia'
         self.photometric_type = photometric_type
@@ -346,7 +349,7 @@ class AgeModel:
         if eGRP is not None and np.isnan(eGRP).any():
             raise ValueError('Gaia GRP magnitude error (eGRP) cannot contain NaN values')
 
-        if store_samples and n*len(met) > 1e6:
+        if store_samples and n*len(met) > 1e6 and self.verbose:
             warnings.warn('Storing samples for {} stars with {} samples for each will take a lot of memory. Consider setting store_samples=False to only store mean,median,mode and std of individual age distributions.'.format(len(met),n))
 
         inputs = [input for input in [met,mag,col,emet,emag,ecol,GBP,GRP,eGBP,eGRP] if input is not None]
@@ -465,7 +468,7 @@ class AgeModel:
         
         return in_domain
     
-    def population_age(self,nbins=280,min_age=0,max_age=14,check_domain=True,n_mc=100,use_tqdm=True):
+    def population_age(self,nbins=280,min_age=0,max_age=14,check_domain=True,n_mc=100,use_tqdm=True,epsilon=None):
         if self.ages is None:
             raise ValueError('No samples have been stored yet. Make sure to run ages_prediction() with store_samples=True')
         
@@ -493,41 +496,39 @@ class AgeModel:
         loop = range(n_mc)
         if self.use_tqdm and use_tqdm:
             loop = tqdm(loop)
-        epsilon = np.clip(1/ages.shape[0],0.001,0.1)
+        
+        if epsilon is None:
+            epsilon = np.clip(1/ages.shape[0],0.001,0.1)
+
+        individual_pdfs = []
+        for i in range(ages.shape[0]):
+            age = ages[i]
+            pdf, bins = np.histogram(age,bins=nbins,range=(min_age,max_age))
+            pdf = pdf.astype(float)
+            pdf += epsilon
+            individual_pdfs.append(pdf)
+
         for i in loop:
             random_star_indices = np.random.choice(list(range(ages.shape[0])), size=ages.shape[0], replace=True)
             random_star_indices = random_star_indices.astype(int)
-            random_star_ages = ages[random_star_indices,:]
-            global_pdf = np.ones(nbins)
-            for j in range(random_star_ages.shape[0]):
-                age = random_star_ages[j]
-                pdf, bins = np.histogram(age,bins=nbins,range=(min_age,max_age))
-                pdf = pdf.astype(float)
-                pdf += epsilon
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", RuntimeWarning)
-                    global_pdf *= pdf
-            best_age = bins[np.argmax(global_pdf)] + (bins[1]-bins[0])/2
-            if best_age != bins[0]+(bins[1]-bins[0])/2:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                arr = np.array(individual_pdfs)
+                selected = arr[random_star_indices]
+                global_pdf = np.prod(selected, axis=0)
+            if not np.allclose(global_pdf, global_pdf[0]):
                 pdfs.append(bins[np.argmax(global_pdf)] + (bins[1]-bins[0])/2)
 
         if len(pdfs) == 0:
-            warnings.warn('No valid population age could be computed from the samples')
-            return np.nan,np.nan
+            if self.verbose:
+                warnings.warn('No valid population age could be computed from the samples')
+            self.pop_age = np.nan
+            self.pop_age_error = (np.nan,np.nan)
+            return np.nan,(np.nan,np.nan)
 
         population_age = np.median(pdfs)
-
-        best_ages = []
-        
-        for j in range(ages.shape[0]):
-            age = ages[j]
-            pdf, bins = np.histogram(age,bins=nbins,range=(min_age,max_age))
-            pdf = pdf.astype(float)
-            best_age = bins[np.argmax(pdf)] + (bins[1]-bins[0])/2
-            best_ages.append(best_age)
-
-        population_age_p16 = np.percentile(best_ages,16)
-        population_age_p84 = np.percentile(best_ages,84)
+        population_age_p16 = np.percentile(pdfs,16)
+        population_age_p84 = np.percentile(pdfs,84)
 
         self.pop_age = population_age
         self.pop_age_error = (population_age_p16,population_age_p84)
@@ -614,6 +615,11 @@ class AgeModel:
                    selected_isochrone_linewidth=2,
                    uncertainty_alpha=0.25,
                    colorbar_lims=None,
+                   colorbar_loc='right',
+                   colorbar_pad=0.02,
+                   colorbar=True,
+                   n_mc=100,
+                   epsilon=None,
                    **kwargs):
         if has_matplotlib == False:
             raise ImportError('matplotlib is required for HR diagram plotting')
@@ -629,7 +635,8 @@ class AgeModel:
             isochrone_ages_std = []
         
         if age_type not in ('median','mean','mode'):
-            print('Age type not available, using median instead')
+            if self.verbose:
+                print('Age type not available, using median instead')
             age_type = 'median'
         
         if plot_stars:
@@ -693,7 +700,8 @@ class AgeModel:
                 raise ValueError('isochrone_met must be a float or int')
             isochrone_met = str(round(isochrone_met))
         if isochrone_met not in isochrones.keys():
-            print('Metallicity not available for this model (-2,-1,0), using [M/H]=0 instead')
+            if self.verbose:
+                print('Metallicity not available for this model (-2,-1,0), using [M/H]=0 instead')
             isochrone_met = '0'
         isochrones = isochrones[isochrone_met]
         
@@ -754,23 +762,25 @@ class AgeModel:
                 vmin, vmax = colorbar_lims
 
             scatter.set_clim(vmin, vmax)
-            cb = plt.colorbar(scatter)
-            cb.set_label('Age [Gyr]', fontsize=colorbar_fontsize)
-            cb.ax.tick_params(labelsize=colorbar_fontsize)
+            if colorbar:
+                cb = plt.colorbar(scatter,location=colorbar_loc,pad=colorbar_pad)
+                cb.set_label('Age [Gyr]', fontsize=colorbar_fontsize)
+                cb.ax.tick_params(labelsize=colorbar_fontsize)
 
-        if type(isochrone_ages) is float or type(isochrone_ages) is int:
+        if isinstance(isochrone_ages, (float, int, np.floating, np.integer)):
             isochrone_ages = [float(isochrone_ages)]
-        if type(isochrone_ages_std) is float or type(isochrone_ages_std) is int:
+        if isinstance(isochrone_ages_std, (float, int, np.floating, np.integer)):
             isochrone_ages_std = [float(isochrone_ages_std)]
         while len(isochrone_ages_std) < len(isochrone_ages):
             isochrone_ages_std += [None]
         if plot_isochrone:
             if self.ages is not None and self.ages.shape[1] > 1:
                 if self.pop_age is None:
-                    self.population_age(check_domain=check_domain,use_tqdm=False)
-                isochrone_ages += [self.pop_age]
-                isochrone_ages_std += [self.pop_age_error]
-            else:
+                    self.population_age(check_domain=check_domain,n_mc=n_mc,epsilon=epsilon,use_tqdm=False)
+                if self.pop_age is not None:
+                    isochrone_ages += [self.pop_age]
+                    isochrone_ages_std += [self.pop_age_error]
+            elif age is not None:
                 isochrone_ages += [np.median(age)]
                 isochrone_ages_std += [np.std(age)]
 
@@ -783,6 +793,8 @@ class AgeModel:
                     vmin = max(0, isochrone_ages[0] - 0.5)
                     vmax = min(14, isochrone_ages[0] + 0.5)
             for i, (isochrone_age, isochrone_age_std) in enumerate(zip(isochrone_ages,isochrone_ages_std)):
+                if np.isnan(isochrone_age):
+                    continue
                 isochrone = self.get_closest_isochrone(isochrone_age)
                 color = isochrone_cmap((i+1)/(len(isochrone_ages)+1))
 
@@ -957,44 +969,42 @@ class AgeModel:
             closest_iso = min(isos_dic, key=lambda x: abs(x['age'] - age_target))
             bp_rp_interp = np.array(closest_iso['BP-RP'])
             mg_interp = np.array(closest_iso['MG'])
-            m_interp = np.array(closest_iso['M'])
             age_interp = np.full(len(bp_rp_interp), closest_iso['age'])
         # Return as a dict of arrays
         return {
             'age': age_interp,
             'BP-RP': bp_rp_interp,
-            'MG': mg_interp,
-            'M': m_interp
+            'MG': mg_interp
         }
 
 class BaSTIModel(AgeModel):
-    def __init__(self,use_sklearn=True,use_tqdm=True):
-        super().__init__('BaSTI',use_sklearn,use_tqdm)
+    def __init__(self, *args, **kwargs):
+        super().__init__('BaSTI',*args, **kwargs)
 
 class PARSECModel(AgeModel):
-    def __init__(self,use_sklearn=True,use_tqdm=True):
-        super().__init__('PARSEC',use_sklearn,use_tqdm)
+    def __init__(self, *args, **kwargs):
+        super().__init__('PARSEC',*args, **kwargs)
 
 class MISTModel(AgeModel):
-    def __init__(self,use_sklearn=True,use_tqdm=True):
-        super().__init__('MIST',use_sklearn,use_tqdm)
+    def __init__(self, *args, **kwargs):
+        super().__init__('MIST',*args, **kwargs)
 
 class GenevaModel(AgeModel):
-    def __init__(self,use_sklearn=True,use_tqdm=True):
-        super().__init__('Geneva',use_sklearn,use_tqdm)
+    def __init__(self, *args, **kwargs):
+        super().__init__('Geneva',*args, **kwargs)
 
 class DartmouthModel(AgeModel):
-    def __init__(self,use_sklearn=True,use_tqdm=True):
-        super().__init__('Dartmouth',use_sklearn,use_tqdm)
+    def __init__(self, *args, **kwargs):
+        super().__init__('Dartmouth',*args, **kwargs)
 
 class YaPSIModel(AgeModel):
-    def __init__(self,use_sklearn=True,use_tqdm=True):
-        super().__init__('YaPSI',use_sklearn,use_tqdm)
+    def __init__(self, *args, **kwargs):
+        super().__init__('YaPSI',*args, **kwargs)
 
 class BaSTI_HSTModel(AgeModel):
-    def __init__(self,use_sklearn=True,use_tqdm=True,photometric_type='HST'):
-        super().__init__('BaSTI_HST',use_sklearn,use_tqdm,photometric_type)
+    def __init__(self,*args,photometric_type='HST',**kwargs):
+        super().__init__('BaSTI_HST',*args, **kwargs, photometric_type=photometric_type)
 
 class BaSTI_HST_enhancedModel(AgeModel):
-    def __init__(self,use_sklearn=True,use_tqdm=True,photometric_type='HST'):
-        super().__init__('BaSTI_HST_enhanced',use_sklearn,use_tqdm,photometric_type)
+    def __init__(self,*args,photometric_type='HST',**kwargs):
+        super().__init__('BaSTI_HST_enhanced',*args, **kwargs, photometric_type=photometric_type)
