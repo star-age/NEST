@@ -524,7 +524,7 @@ class AgeModel:
                 warnings.warn('No valid population age could be computed from the samples')
             self.pop_age = np.nan
             self.pop_age_error = (np.nan,np.nan)
-            return np.nan,(np.nan,np.nan)
+            return PopulationAge(np.nan,(np.nan,np.nan))
 
         population_age = np.median(pdfs)
         population_age_p16 = np.percentile(pdfs,16)
