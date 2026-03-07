@@ -4,27 +4,27 @@ from ._version import __version__
 
 try:
     from tqdm import tqdm
-    has_tqdm = True
+    __has_tqdm = True
 except ImportError:
-    has_tqdm = False
+    __has_tqdm = False
 try:
     import requests
-    has_requests = True
+    __has_requests = True
 except ImportError:
-    has_requests = False
+    __has_requests = False
 try:
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     from matplotlib.colors import ListedColormap
-    has_matplotlib = True
+    __has_matplotlib = True
 except ImportError:
-    has_matplotlib = False
+    __has_matplotlib = False
 try:
     from sklearn.neural_network import MLPRegressor
     from sklearn.preprocessing import StandardScaler
-    has_sklearn = True
+    __has_sklearn = True
 except ImportError:
-    has_sklearn = False
+    __has_sklearn = False
 
 NEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,17 +35,19 @@ def custom_warning(message, category, filename, lineno, file=None, line=None):
 
 warnings.showwarning = custom_warning
 
-def import_cmaps():
+def get_cmaps():
+    """Return custom colormaps used in the default HR diagram function."""
     cmaps = {}
-    if has_matplotlib:
+    if __has_matplotlib:
         cmaps_colors = dict(np.load(os.path.join(NEST_DIR, 'cmaps.npz')))
         for name, colors in cmaps_colors.items():
             cmaps[name] = ListedColormap(colors)
     return cmaps
 
-cmaps = import_cmaps()
+cmaps = get_cmaps()
 
 def sanitize_input(input):
+    """Return any iterator type of object as a python list."""
     if input is not None and type(input) is not list:
         if hasattr(input,'ndim') and input.ndim == 0:
                 input = input.item()
@@ -56,11 +58,13 @@ def sanitize_input(input):
     return input
 
 def get_mode(arr,min_age=0,max_age=14,nbins=280):
+    """Compute the mode of a given distribution."""
     #TODO: choose number of bins appropriately
     hist, bins = np.histogram(arr,bins=nbins,range=(min_age,max_age))
     return bins[np.argmax(hist)] + (bins[1]-bins[0])/2
 
 def download_isochrones(verbose=True):
+    """Download isochrone curve data for plotting off of the latest commit."""
     if input('Isochrone curves for plots do not exist. Download them ? (27.9Mb) [Y/n] (default: Y)') not in ['Y','y','']:
             return None
     iso_url = "https://github.com/star-age/star-age.github.io/archive/refs/heads/main.zip"
@@ -69,7 +73,7 @@ def download_isochrones(verbose=True):
 
     if verbose:
         print("Downloading isochrones from GitHub...")
-    if has_requests and has_tqdm:
+    if __has_requests and __has_tqdm:
         response = requests.get(iso_url, stream=True)
         total = int(response.headers.get('content-length', 0))
         with open(tmp_zip, 'wb') as file, tqdm(
@@ -101,6 +105,7 @@ def download_isochrones(verbose=True):
         print("Isochrones downloaded and extracted.")
 
 def get_isochrones(model):
+    """Return isochrone curve data for a given model, and if it does not exist download it."""
     if model.model_name in loaded_isochrones:
         return loaded_isochrones[model.model_name]
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones')) == False:
@@ -124,6 +129,7 @@ def get_isochrones(model):
     return None
 
 def available_models():
+    """Return a descriptive list of available NNs trained on stellar evolution models."""
     model_list = ['BaSTI','PARSEC','MIST','Geneva','Dartmouth','YaPSI','BaSTI_HST']
     model_sources = [
         'http://basti-iac.oa-abruzzo.inaf.it/',
@@ -138,6 +144,7 @@ def available_models():
         print(model + 'Model (' + source + ')')
 
 class PopulationAge:
+    """A class containing a value and its uncertainty, with pretty printing methods."""
     __array_priority__ = 1000
     def __init__(self,age,age_error):
         self.age50 = age
@@ -199,10 +206,11 @@ class PopulationAge:
 
 
 class AgeModel:
+    """A wrapper for our pretrained neural networks."""
     def __init__(self,model_name,use_sklearn=True,use_tqdm=True,photometric_type=None,verbose=True):
         self.model_name = model_name
-        self.use_sklearn = use_sklearn and has_sklearn
-        self.use_tqdm = use_tqdm and has_tqdm
+        self.use_sklearn = use_sklearn and __has_sklearn
+        self.use_tqdm = use_tqdm and __has_tqdm
         self.verbose = verbose
         if photometric_type == None:
             photometric_type = 'Gaia'
@@ -245,6 +253,7 @@ class AgeModel:
         return _str
     
     def load_mlp_and_scaler(self, filename):
+        """Return a pretrained neural network and its associated scaler as scikit-learn objects."""
         with open(filename + '.mlp', "r") as f:
             payload = json.load(f)
         nn_payload = payload['mlp']
@@ -273,6 +282,10 @@ class AgeModel:
         return {'NN':mlp, 'Scaler':scaler}
 
     def load_neural_network(self, model_name):
+        """
+        Load a neural network pretrained on the stellar evolution model associated, with its associated scaler.
+        Load scikit-learn objects if the user has scikit installed, otherwise numpy arrays of weights and biases.
+        """
         if self.use_sklearn:
             model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name}')
             model_path_reduced = os.path.join(NEST_DIR, 'models', f'{model_name}_BPRP')
@@ -315,7 +328,8 @@ class AgeModel:
                         eGBP=None,eGRP=None,
                         n=1,
                         store_samples=True,
-                        min_age=0,max_age=14):
+                        min_age=0,max_age=14,mode_bins=280):
+        """Compute age distributions or age estimators (with store_samples=False) of stars given their HR diagram position and [Fe/H]."""
         
         met = sanitize_input(met)
         mag = sanitize_input(mag)
@@ -421,7 +435,7 @@ class AgeModel:
             else:
                 median = np.median(ages)
                 mean = np.mean(ages)
-                mode = get_mode(ages,min_age,max_age)
+                mode = get_mode(ages,min_age,max_age,nbins=mode_bins)
                 std = np.std(ages)
                 self.medians[i] = median
                 self.means[i] = mean
@@ -435,6 +449,7 @@ class AgeModel:
             return {'mean':self.means,'median':self.medians,'mode':self.modes,'std':self.stds}
 
     def check_domain(self,met,mag,col,emet=None,emag=None,ecol=None,use_tqdm=True):
+        """Check if points fall within the training domain of a model."""
         if self.domain is None:
             raise ValueError('No domain defined for this model')
         met = sanitize_input(met)
@@ -469,6 +484,7 @@ class AgeModel:
         return in_domain
     
     def population_age(self,nbins=280,min_age=0,max_age=14,check_domain=True,n_mc=100,use_tqdm=True,epsilon=None):
+        """Compute a single age value for a coeval (e.g. star cluster) stellar population."""
         if self.ages is None:
             raise ValueError('No samples have been stored yet. Make sure to run ages_prediction() with store_samples=True')
         
@@ -570,18 +586,21 @@ class AgeModel:
         return a[0]
     
     def mean_ages(self):
+        """Return the mean age of each computed star age distribution."""
         if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         self.means = np.mean(self.ages,axis=1)
         return self.means
 
     def median_ages(self):
+        """Return the median age of each computed star age distribution."""
         if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         self.medians = np.median(self.ages,axis=1)
         return self.medians
 
-    def mode_ages(self):
+    def mode_ages(self,nbins=280):
+        """Return. the mode of each computed star age distribution."""
         if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         modes = []
@@ -589,11 +608,12 @@ class AgeModel:
         max_age = max(14,self.ages.max())
 
         for i in range(len(self.ages)):
-            modes.append(get_mode(self.ages[i],min_age,max_age))
+            modes.append(get_mode(self.ages[i],min_age,max_age,nbins=nbins))
         self.modes = np.array(modes)
         return self.modes
     
     def std_ages(self):
+        """Return the standard deviation of each computed star age distribution."""
         if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         self.stds = np.std(self.ages,axis=1)
@@ -621,7 +641,7 @@ class AgeModel:
                    n_mc=100,
                    epsilon=None,
                    **kwargs):
-        if has_matplotlib == False:
+        if __has_matplotlib == False:
             raise ImportError('matplotlib is required for HR diagram plotting')
 
         if type(star_cmap) is str:
@@ -770,7 +790,6 @@ class AgeModel:
                 cb.ax.tick_params(labelsize=colorbar_fontsize)
                 cb.set_alpha(1)
                 cb.solids.set(alpha=1)
-                #cb.draw_all()
 
         if isinstance(isochrone_ages, (float, int, np.floating, np.integer)):
             isochrone_ages = [float(isochrone_ages)]
