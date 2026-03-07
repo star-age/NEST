@@ -676,6 +676,8 @@ class AgeModel:
                 met = met[in_domain]
                 mag = mag[in_domain]
                 col = col[in_domain]
+        else:
+            age = None
 
         new_fig = False
         if fig is None or ax is None:
@@ -766,6 +768,9 @@ class AgeModel:
                 cb = plt.colorbar(scatter,location=colorbar_loc,pad=colorbar_pad)
                 cb.set_label('Age [Gyr]', fontsize=colorbar_fontsize)
                 cb.ax.tick_params(labelsize=colorbar_fontsize)
+                cb.set_alpha(1)
+                cb.solids.set(alpha=1)
+                #cb.draw_all()
 
         if isinstance(isochrone_ages, (float, int, np.floating, np.integer)):
             isochrone_ages = [float(isochrone_ages)]
@@ -1001,10 +1006,6 @@ class YaPSIModel(AgeModel):
     def __init__(self, *args, **kwargs):
         super().__init__('YaPSI',*args, **kwargs)
 
-class BaSTI_HSTModel(AgeModel):
+class __BaSTI_HSTModel(AgeModel):
     def __init__(self,*args,photometric_type='HST',**kwargs):
         super().__init__('BaSTI_HST',*args, **kwargs, photometric_type=photometric_type)
-
-class BaSTI_HST_enhancedModel(AgeModel):
-    def __init__(self,*args,photometric_type='HST',**kwargs):
-        super().__init__('BaSTI_HST_enhanced',*args, **kwargs, photometric_type=photometric_type)

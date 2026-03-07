@@ -2,7 +2,7 @@
   <img src="logo.png" />
 </p>
 
-[![Documentation](https://img.shields.io/badge/docs-passing-success)](https://star-age.github.io/NEST-docs/) [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/star-age/NEST/blob/main/LICENSE) [![License](https://img.shields.io/badge/pypi-v0.9.0-blue)](https://pypi.org/project/astro-nest/)
+[![Documentation](https://img.shields.io/badge/docs-passing-success)](https://star-age.github.io/NEST-docs/) [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/star-age/NEST/blob/main/LICENSE) [![License](https://img.shields.io/badge/pypi-v0.9.1-blue)](https://pypi.org/project/astro-nest/)
 
 **NEST** (**N**eural network **E**stimator of **S**tellar **T**imes) is a python package designed to make the use of pre-trained neural networks for stellar age estimation easy.
 
