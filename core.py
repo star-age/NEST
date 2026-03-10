@@ -4,27 +4,27 @@ from ._version import __version__
 
 try:
     from tqdm import tqdm
-    __has_tqdm = True
+    _has_tqdm = True
 except ImportError:
-    __has_tqdm = False
+    _has_tqdm = False
 try:
     import requests
-    __has_requests = True
+    _has_requests = True
 except ImportError:
-    __has_requests = False
+    _has_requests = False
 try:
     import matplotlib.pyplot as plt
     from matplotlib.patches import Polygon
     from matplotlib.colors import ListedColormap
-    __has_matplotlib = True
+    _has_matplotlib = True
 except ImportError:
-    __has_matplotlib = False
+    _has_matplotlib = False
 try:
     from sklearn.neural_network import MLPRegressor
     from sklearn.preprocessing import StandardScaler
-    __has_sklearn = True
+    _has_sklearn = True
 except ImportError:
-    __has_sklearn = False
+    _has_sklearn = False
 
 NEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -35,18 +35,18 @@ def custom_warning(message, category, filename, lineno, file=None, line=None):
 
 warnings.showwarning = custom_warning
 
-def get_cmaps():
+def _get_cmaps():
     """Return custom colormaps used in the default HR diagram function."""
     cmaps = {}
-    if __has_matplotlib:
+    if _has_matplotlib:
         cmaps_colors = dict(np.load(os.path.join(NEST_DIR, 'cmaps.npz')))
         for name, colors in cmaps_colors.items():
             cmaps[name] = ListedColormap(colors)
     return cmaps
 
-cmaps = get_cmaps()
+cmaps = _get_cmaps()
 
-def sanitize_input(input):
+def _sanitize_input(input):
     """Return any iterator type of object as a python list."""
     if input is not None and type(input) is not list:
         if hasattr(input,'ndim') and input.ndim == 0:
@@ -57,13 +57,13 @@ def sanitize_input(input):
             input = [input]
     return input
 
-def get_mode(arr,min_age=0,max_age=14,nbins=280):
+def _get_mode(arr,min_age=0,max_age=14,nbins=280):
     """Compute the mode of a given distribution."""
     #TODO: choose number of bins appropriately
     hist, bins = np.histogram(arr,bins=nbins,range=(min_age,max_age))
     return bins[np.argmax(hist)] + (bins[1]-bins[0])/2
 
-def download_isochrones(verbose=True):
+def _download_isochrones(verbose=True):
     """Download isochrone curve data for plotting off of the latest commit."""
     if input('Isochrone curves for plots do not exist. Download them ? (27.9Mb) [Y/n] (default: Y)') not in ['Y','y','']:
             return None
@@ -73,7 +73,7 @@ def download_isochrones(verbose=True):
 
     if verbose:
         print("Downloading isochrones from GitHub...")
-    if __has_requests and __has_tqdm:
+    if _has_requests and _has_tqdm:
         response = requests.get(iso_url, stream=True)
         total = int(response.headers.get('content-length', 0))
         with open(tmp_zip, 'wb') as file, tqdm(
@@ -109,7 +109,7 @@ def get_isochrones(model):
     if model.model_name in loaded_isochrones:
         return loaded_isochrones[model.model_name]
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones')) == False:
-        download_isochrones(verbose=model.verbose)
+        _download_isochrones(verbose=model.verbose)
     
     matching_version = True
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones/version.txt')):
@@ -209,8 +209,8 @@ class AgeModel:
     """A wrapper for our pretrained neural networks."""
     def __init__(self,model_name,use_sklearn=True,use_tqdm=True,photometric_type=None,verbose=True):
         self.model_name = model_name
-        self.use_sklearn = use_sklearn and __has_sklearn
-        self.use_tqdm = use_tqdm and __has_tqdm
+        self.use_sklearn = use_sklearn and _has_sklearn
+        self.use_tqdm = use_tqdm and _has_tqdm
         self.verbose = verbose
         if photometric_type == None:
             photometric_type = 'Gaia'
@@ -331,16 +331,16 @@ class AgeModel:
                         min_age=0,max_age=14,mode_bins=280):
         """Compute age distributions or age estimators (with store_samples=False) of stars given their HR diagram position and [Fe/H]."""
         
-        met = sanitize_input(met)
-        mag = sanitize_input(mag)
-        col = sanitize_input(col)
-        emet = sanitize_input(emet)
-        emag = sanitize_input(emag)
-        ecol = sanitize_input(ecol)
-        GBP = sanitize_input(GBP)
-        GRP = sanitize_input(GRP)
-        eGBP = sanitize_input(eGBP)
-        eGRP = sanitize_input(eGRP)
+        met = _sanitize_input(met)
+        mag = _sanitize_input(mag)
+        col = _sanitize_input(col)
+        emet = _sanitize_input(emet)
+        emag = _sanitize_input(emag)
+        ecol = _sanitize_input(ecol)
+        GBP = _sanitize_input(GBP)
+        GRP = _sanitize_input(GRP)
+        eGBP = _sanitize_input(eGBP)
+        eGRP = _sanitize_input(eGRP)
 
         if np.isnan(met).any():
             raise ValueError('Metallicity (met) cannot contain NaN values')
@@ -435,7 +435,7 @@ class AgeModel:
             else:
                 median = np.median(ages)
                 mean = np.mean(ages)
-                mode = get_mode(ages,min_age,max_age,nbins=mode_bins)
+                mode = _get_mode(ages,min_age,max_age,nbins=mode_bins)
                 std = np.std(ages)
                 self.medians[i] = median
                 self.means[i] = mean
@@ -452,12 +452,12 @@ class AgeModel:
         """Check if points fall within the training domain of a model."""
         if self.domain is None:
             raise ValueError('No domain defined for this model')
-        met = sanitize_input(met)
-        mag = sanitize_input(mag)
-        col = sanitize_input(col)
-        emet = sanitize_input(emet)
-        emag = sanitize_input(emag)
-        ecol = sanitize_input(ecol)
+        met = _sanitize_input(met)
+        mag = _sanitize_input(mag)
+        col = _sanitize_input(col)
+        emet = _sanitize_input(emet)
+        emag = _sanitize_input(emag)
+        ecol = _sanitize_input(ecol)
         
         has_errors = emet != None and emag != None and ecol != None
         
@@ -608,7 +608,7 @@ class AgeModel:
         max_age = max(14,self.ages.max())
 
         for i in range(len(self.ages)):
-            modes.append(get_mode(self.ages[i],min_age,max_age,nbins=nbins))
+            modes.append(_get_mode(self.ages[i],min_age,max_age,nbins=nbins))
         self.modes = np.array(modes)
         return self.modes
     
@@ -641,7 +641,7 @@ class AgeModel:
                    n_mc=100,
                    epsilon=None,
                    **kwargs):
-        if __has_matplotlib == False:
+        if _has_matplotlib == False:
             raise ImportError('matplotlib is required for HR diagram plotting')
 
         if type(star_cmap) is str:
@@ -690,9 +690,9 @@ class AgeModel:
             if check_domain and met is not None:
                 in_domain = self.check_domain(met,mag,col,use_tqdm=False)
                 age = age[in_domain]
-                met = np.array(sanitize_input(met))
-                mag = np.array(sanitize_input(mag))
-                col = np.array(sanitize_input(col))
+                met = np.array(_sanitize_input(met))
+                mag = np.array(_sanitize_input(mag))
+                col = np.array(_sanitize_input(col))
                 met = met[in_domain]
                 mag = mag[in_domain]
                 col = col[in_domain]
