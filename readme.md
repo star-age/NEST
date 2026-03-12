@@ -6,7 +6,7 @@
 
 **NEST** (**N**eural network **E**stimator of **S**tellar **T**imes) is a python package designed to make the use of pre-trained neural networks for stellar age estimation easy.
 
-It is based on [Boin et al. 2025](https://arxiv.org/abs/2603.09540) (to be published in A&A).
+It is based on [Boin et al. 2026](https://arxiv.org/abs/2603.09540) (to be published in A&A).
 
     @ARTICLE{2026arXiv260309540B,
         author = {{Boin}, T. and {Casamiquela}, L. and {Haywood}, M. and {Di Matteo}, P. and {Lebreton}, Y. and {Uddin}, M. and {Reese}, D.~R.},
