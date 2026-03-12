@@ -24,7 +24,7 @@ It is based on [Boin et al. 2025](https://arxiv.org/abs/2603.09540) (to be publi
         adsnote = {Provided by the SAO/NASA Astrophysics Data System}
     }
 
-You can download the BibTeX citation file here: {download}`NEST.bib <NEST.bib>`
+You can download the BibTeX citation file here: [NEST.bib](https://raw.githubusercontent.com/star-age/NEST/refs/heads/main/NEST.bib)
 
 With it, you can estimate the ages of stars based on their position in the Color-Magnitude Diagram and their metallicity. It contains a suite of Neural Networks trained on different stellar evolutionary grids. If observational uncertainties are provided, it can compute age uncertainties.
 
