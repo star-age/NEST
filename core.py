@@ -130,7 +130,7 @@ def get_isochrones(model):
 
 def available_models():
     """Return a descriptive list of available NNs trained on stellar evolution models."""
-    model_list = ['BaSTI','PARSEC','MIST','Geneva','Dartmouth','YaPSI','BaSTI_HST']
+    model_list = ['BaSTI','PARSEC','MIST','Geneva','Dartmouth','YaPSI','HST_BaSTI']
     model_sources = [
         'http://basti-iac.oa-abruzzo.inaf.it/',
         'https://stev.oapd.inaf.it/PARSEC/',
@@ -712,7 +712,7 @@ class AgeModel:
                 ax.set_ylabel(r'$M_G$ [mag]', fontsize=axis_fontsize)
             elif self.photometric_type == 'HST':
                 ax.set_xlabel(r'$(F606W-F814W)$ [mag]', fontsize=axis_fontsize)
-                ax.set_ylabel(r'$F606W$ [mag]', fontsize=axis_fontsize)
+                ax.set_ylabel(r'$F814W$ [mag]', fontsize=axis_fontsize)
             ax.tick_params(labelsize=axis_fontsize,axis='both')
         isochrones = get_isochrones(self)
         if isochrones is None:
@@ -1025,6 +1025,6 @@ class YaPSIModel(AgeModel):
     def __init__(self, *args, **kwargs):
         super().__init__('YaPSI',*args, **kwargs)
 
-class __BaSTI_HSTModel(AgeModel):
+class HST_BaSTIModel(AgeModel):
     def __init__(self,*args,photometric_type='HST',**kwargs):
         super().__init__('BaSTI_HST',*args, **kwargs, photometric_type=photometric_type)
