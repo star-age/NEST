@@ -537,7 +537,7 @@ class AgeModel:
 
         if len(pdfs) == 0:
             if self.verbose:
-                warnings.warn('No valid population age could be computed from the samples')
+                warnings.warn('No valid population age could be computed from the samples. Try to up n_mc.')
             self.pop_age = np.nan
             self.pop_age_error = (np.nan,np.nan)
             return PopulationAge(np.nan,(np.nan,np.nan))

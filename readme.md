@@ -2,26 +2,23 @@
   <img src="logo.png" />
 </p>
 
-[![Documentation](https://img.shields.io/badge/docs-passing-success)](https://star-age.github.io/NEST-docs/) [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/star-age/NEST/blob/main/LICENSE) [![License](https://img.shields.io/badge/pypi-v1.0.3-blue)](https://pypi.org/project/astro-nest/)
+[![Documentation](https://img.shields.io/badge/docs-passing-success)](https://star-age.github.io/NEST-docs/) [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/star-age/NEST/blob/main/LICENSE) [![License](https://img.shields.io/badge/pypi-v1.0.4-blue)](https://pypi.org/project/astro-nest/)
 
 **NEST** (**N**eural network **E**stimator of **S**tellar **T**imes) is a python package designed to make the use of pre-trained neural networks for stellar age estimation easy.
 
-It is based on [Boin et al. 2026](https://arxiv.org/abs/2603.09540) (to be published in A&A).
+It is based on [Boin et al. 2026](https://www.aanda.org/articles/aa/full_html/2026/04/aa58436-25/aa58436-25.html).
 
-    @ARTICLE{2026arXiv260309540B,
-        author = {{Boin}, T. and {Casamiquela}, L. and {Haywood}, M. and {Di Matteo}, P. and {Lebreton}, Y. and {Uddin}, M. and {Reese}, D.~R.},
-            title = "{Stellar age determination using deep neural networks: Isochrone ages for 1.3 million stars, based on BaSTI, MIST, PARSEC, Dartmouth and SYCLIST evolutionary grids}",
-        journal = {arXiv e-prints},
-        keywords = {Astrophysics of Galaxies},
-            year = 2026,
-            month = mar,
-            eid = {arXiv:2603.09540},
-            pages = {arXiv:2603.09540},
-    archivePrefix = {arXiv},
-        eprint = {2603.09540},
-    primaryClass = {astro-ph.GA},
-        adsurl = {https://ui.adsabs.harvard.edu/abs/2026arXiv260309540B},
-        adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+If you use **NEST** for your research, please acknowledge this by citing
+
+    @article{ Boin26,
+        author = {{Boin, T.} and {Casamiquela, L.} and {Haywood, M.} and {Di Matteo, P.} and {Lebreton, Y.} and {Uddin, M.} and {Reese, D. R.}},
+        title = {Stellar age determination using deep neural networks - Isochrone ages for 1.3 million stars, based on BaSTI, MIST, PARSEC, Dartmouth, and SYCLIST evolutionary grids},
+        DOI= "10.1051/0004-6361/202558436",
+        url= "https://doi.org/10.1051/0004-6361/202558436",
+        journal = {A\&A},
+        year = 2026,
+        volume = 708,
+        pages = "A215",
     }
 
 You can download the BibTeX citation file here: [NEST.bib](https://raw.githubusercontent.com/star-age/NEST/refs/heads/main/NEST.bib)
