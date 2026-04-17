@@ -31,12 +31,20 @@ NEST_DIR = os.path.dirname(os.path.abspath(__file__))
 loaded_isochrones = {}
 
 def custom_warning(message, category, filename, lineno, file=None, line=None):
+    """Custom warning handler to print warnings in a consistent format."""
     print(f"{category.__name__}: {message}")
 
 warnings.showwarning = custom_warning
 
 def _get_cmaps():
-    """Return custom colormaps used in the default HR diagram function."""
+    """
+    Return custom colormaps used in the default HR diagram function.
+
+    Returns
+    -------
+    dict
+        Dictionary of colormap names to matplotlib ListedColormap objects.
+    """
     cmaps = {}
     if _has_matplotlib:
         cmaps_colors = dict(np.load(os.path.join(NEST_DIR, 'cmaps.npz')))
@@ -47,7 +55,19 @@ def _get_cmaps():
 cmaps = _get_cmaps()
 
 def _sanitize_input(input):
-    """Return any iterator type of object as a python list."""
+    """
+    Convert any array-like input to a Python list.
+
+    Parameters
+    ----------
+    input : array-like or scalar
+        Input to be sanitized.
+
+    Returns
+    -------
+    list
+        Sanitized list version of the input.
+    """
     if input is not None and type(input) is not list:
         if hasattr(input,'ndim') and input.ndim == 0:
                 input = input.item()
@@ -57,14 +77,39 @@ def _sanitize_input(input):
             input = [input]
     return input
 
-def _get_mode(arr,min_age=0,max_age=14,nbins=280):
-    """Compute the mode of a given distribution."""
+def _get_mode(arr,min_age=0,max_age=14,nbins=2800):
+    """
+    Compute the mode of a given distribution.
+
+    Parameters
+    ----------
+    arr : array-like
+        Input data array.
+    min_age : float, optional
+        Minimum value for histogram bins (default: 0).
+    max_age : float, optional
+        Maximum value for histogram bins (default: 14).
+    nbins : int, optional
+        Number of bins for the histogram (default: 280).
+
+    Returns
+    -------
+    float
+        The mode value of the distribution.
+    """
     #TODO: choose number of bins appropriately
     hist, bins = np.histogram(arr,bins=nbins,range=(min_age,max_age))
     return bins[np.argmax(hist)] + (bins[1]-bins[0])/2
 
 def _download_isochrones(verbose=True):
-    """Download isochrone curve data for plotting off of the latest commit."""
+    """
+    Download isochrone curve data for plotting from the latest repository.
+
+    Parameters
+    ----------
+    verbose : bool, optional
+        If True, print progress messages (default: True).
+    """
     if input('Isochrone curves for plots do not exist. Download them ? (27.9Mb) [Y/n] (default: Y)') not in ['Y','y','']:
             return None
     iso_url = "https://github.com/star-age/star-age.github.io/archive/refs/heads/main.zip"
@@ -105,7 +150,19 @@ def _download_isochrones(verbose=True):
         print("Isochrones downloaded and extracted.")
 
 def get_isochrones(model):
-    """Return isochrone curve data for a given model, and if it does not exist download it."""
+    """
+    Return isochrone curve data for a given model. If not present, download it.
+
+    Parameters
+    ----------
+    model : AgeModel
+        The age model instance for which to retrieve isochrones.
+
+    Returns
+    -------
+    dict or None
+        Isochrone data as a dictionary, or None if unavailable.
+    """
     if model.model_name in loaded_isochrones:
         return loaded_isochrones[model.model_name]
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones')) == False:
@@ -129,7 +186,9 @@ def get_isochrones(model):
     return None
 
 def available_models():
-    """Return a descriptive list of available NNs trained on stellar evolution models."""
+    """
+    Print a descriptive list of available neural networks trained on stellar evolution models.
+    """
     model_list = ['BaSTI','PARSEC','MIST','Geneva','Dartmouth','YaPSI','HST_BaSTI']
     model_sources = [
         'http://basti-iac.oa-abruzzo.inaf.it/',
@@ -144,7 +203,18 @@ def available_models():
         print(model + 'Model (' + source + ')')
 
 class PopulationAge:
-    """A class containing a value and its uncertainty, with pretty printing methods."""
+    """
+    Container for a value and its uncertainty, with pretty-printing methods for stellar population ages.
+
+    Attributes
+    ----------
+    age50 : float
+        Median age.
+    age16 : float
+        16th percentile age (lower uncertainty).
+    age84 : float
+        84th percentile age (upper uncertainty).
+    """
     __array_priority__ = 1000
     def __init__(self,age,age_error):
         self.age50 = age
@@ -206,7 +276,11 @@ class PopulationAge:
 
 
 class AgeModel:
-    """A wrapper for our pretrained neural networks."""
+    """
+    Wrapper for pretrained neural networks for stellar age estimation.
+
+    Provides methods for loading models, predicting ages, checking input domains, and plotting HR diagrams.
+    """
     def __init__(self,model_name,use_sklearn=True,use_tqdm=True,photometric_type=None,verbose=True):
         self.model_name = model_name
         self.use_sklearn = use_sklearn and _has_sklearn
@@ -253,7 +327,19 @@ class AgeModel:
         return _str
     
     def load_mlp_and_scaler(self, filename):
-        """Return a pretrained neural network and its associated scaler as scikit-learn objects."""
+        """
+        Load a pretrained neural network and its associated scaler as scikit-learn objects.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the model file (without extension).
+
+        Returns
+        -------
+        dict
+            Dictionary with keys 'NN' (MLPRegressor) and 'Scaler' (StandardScaler).
+        """
         with open(filename + '.mlp', "r") as f:
             payload = json.load(f)
         nn_payload = payload['mlp']
@@ -283,8 +369,16 @@ class AgeModel:
 
     def load_neural_network(self, model_name):
         """
-        Load a neural network pretrained on the stellar evolution model associated, with its associated scaler.
-        Load scikit-learn objects if the user has scikit installed, otherwise numpy arrays of weights and biases.
+        Load a neural network pretrained on the specified stellar evolution model, with its associated scaler.
+
+        Parameters
+        ----------
+        model_name : str
+            Name of the model to load.
+
+        Notes
+        -----
+        Loads scikit-learn objects if available, otherwise loads numpy arrays of weights and biases.
         """
         if self.use_sklearn:
             model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name}')
@@ -329,7 +423,37 @@ class AgeModel:
                         n=1,
                         store_samples=True,
                         min_age=0,max_age=14,mode_bins=280):
-        """Compute age distributions or age estimators (with store_samples=False) of stars given their HR diagram position and [Fe/H]."""
+        """
+        Compute ages of stars given their HR diagram position and [Fe/H].
+
+        Parameters
+        ----------
+        met : array-like
+            Metallicity [Fe/H] values.
+        mag : array-like
+            Absolute magnitude values.
+        col : array-like
+            Color values.
+        emet, emag, ecol : array-like, optional
+            Errors on metallicity, magnitude, and color.
+        GBP, GRP : array-like, optional
+            Gaia blue and red magnitudes (if using a 5-inputs age model).
+        eGBP, eGRP : array-like, optional
+            Errors on GBP and GRP.
+        n : int, optional
+            Number of Monte Carlo samples (default: 1).
+        store_samples : bool, optional
+            If True, store all samples; if False, only store summary statistics.
+        min_age, max_age : float, optional
+            Age range for mode calculation.
+        mode_bins : int, optional
+            Number of bins for mode calculation.
+
+        Returns
+        -------
+        np.ndarray or dict
+            Age samples or summary statistics (mean, median, mode, std).
+        """
         
         met = _sanitize_input(met)
         mag = _sanitize_input(mag)
@@ -449,7 +573,23 @@ class AgeModel:
             return {'mean':self.means,'median':self.medians,'mode':self.modes,'std':self.stds}
 
     def check_domain(self,met,mag,col,emet=None,emag=None,ecol=None,use_tqdm=True):
-        """Check if points fall within the training domain of a model."""
+        """
+        Check if input points fall within the training domain of the model.
+
+        Parameters
+        ----------
+        met, mag, col : array-like
+            Metallicity, magnitude, and color values.
+        emet, emag, ecol : array-like, optional
+            Errors on metallicity, magnitude, and color.
+        use_tqdm : bool, optional
+            If True, show progress bar for large input arrays.
+
+        Returns
+        -------
+        np.ndarray
+            Boolean array indicating whether each point is in the domain.
+        """
         if self.domain is None:
             raise ValueError('No domain defined for this model')
         met = _sanitize_input(met)
@@ -483,8 +623,30 @@ class AgeModel:
         
         return in_domain
     
-    def population_age(self,nbins=280,min_age=0,max_age=14,check_domain=True,n_mc=100,use_tqdm=True,epsilon=None):
-        """Compute a single age value for a coeval (e.g. star cluster) stellar population."""
+    def population_age(self,nbins=2800,min_age=0,max_age=14,check_domain=True,n_mc=100,use_tqdm=True,epsilon=None):
+        """
+        Compute a single age value for a coeval (e.g. star cluster) stellar population.
+
+        Parameters
+        ----------
+        nbins : int, optional
+            Number of bins for the age histogram (default: 2800).
+        min_age, max_age : float, optional
+            Age range for the histogram (default: 0, 14).
+        check_domain : bool, optional
+            If True, only use stars within the model domain.
+        n_mc : int, optional
+            Number of Monte Carlo iterations (default: 100).
+        use_tqdm : bool, optional
+            If True, show progress bar.
+        epsilon : float, optional
+            Small offset added to PDFs to avoid zero multiplications.
+
+        Returns
+        -------
+        PopulationAge
+            PopulationAge object with median and uncertainty.
+        """
         if self.ages is None:
             raise ValueError('No samples have been stored yet. Make sure to run ages_prediction() with store_samples=True')
         
@@ -552,6 +714,23 @@ class AgeModel:
         return PopulationAge(population_age, (population_age_p16, population_age_p84))
     
     def propagate(self,X,neural_network,scaler):
+        """
+        Propagate input data through the neural network to predict ages.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data array.
+        neural_network : object
+            Neural network model (scikit-learn or dict).
+        scaler : object
+            Scaler for input normalization.
+
+        Returns
+        -------
+        np.ndarray
+            Predicted ages.
+        """
         if self.use_sklearn:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)
@@ -570,15 +749,22 @@ class AgeModel:
             return np.array(outputs)
 
     def relu(self,x):
+        """ReLU activation function."""
         return np.maximum(0,x)
 
     def dot(self,x,y):
+        """
+        Compute the dot product of two vectors.
+        """
         x_dot_y = 0
         for i in range(len(x)):
             x_dot_y += x[i]*y[i]
         return x_dot_y
 
     def predict_nn(self,X,weights,biases):
+        """
+        Forward pass through a simple neural network using numpy weights and biases.
+        """
         a = X
         for i in range(len(weights)):
             a = self.dot(a,np.array(weights[i])) + np.array(biases[i])
@@ -586,21 +772,47 @@ class AgeModel:
         return a[0]
     
     def mean_ages(self):
-        """Return the mean age of each computed star age distribution."""
+        """
+        Return the mean age of each computed star age distribution.
+
+        Returns
+        -------
+        np.ndarray
+            Mean ages for each star.
+        """
         if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         self.means = np.mean(self.ages,axis=1)
         return self.means
 
     def median_ages(self):
-        """Return the median age of each computed star age distribution."""
+        """
+        Return the median age of each computed star age distribution.
+
+        Returns
+        -------
+        np.ndarray
+            Median ages for each star.
+        """
         if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         self.medians = np.median(self.ages,axis=1)
         return self.medians
 
-    def mode_ages(self,nbins=280):
-        """Return. the mode of each computed star age distribution."""
+    def mode_ages(self,nbins=2800):
+        """
+        Return the mode of each computed star age distribution.
+
+        Parameters
+        ----------
+        nbins : int, optional
+            Number of bins for mode calculation (default: 2800).
+
+        Returns
+        -------
+        np.ndarray
+            Mode ages for each star.
+        """
         if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         modes = []
@@ -613,34 +825,102 @@ class AgeModel:
         return self.modes
     
     def std_ages(self):
-        """Return the standard deviation of each computed star age distribution."""
+        """
+        Return the standard deviation of each computed star age distribution.
+
+        Returns
+        -------
+        np.ndarray
+            Standard deviations for each star's age distribution.
+        """
         if self.ages is None:
             raise ValueError('No age predictions have been made yet')
         self.stds = np.std(self.ages,axis=1)
         return self.stds
     
     def HR_diagram(self,
-                   isochrone_met=0,
-                   plot_isochrone=True,plot_stars=True,plot_isochrone_uncertainty=True,
-                   isochrone_ages=None,isochrone_ages_std=None,
-                   age_type='median',
-                   check_domain=True,
-                   fig=None,ax=None,
-                   star_cmap=cmaps['tempo_R'],
-                   isochrone_cmap=cmaps['acton'],
-                   loc_legend='best',
-                   axis_fontsize=12,
-                   legend_fontsize=10,
-                   colorbar_fontsize=10,
-                   selected_isochrone_linewidth=2,
-                   uncertainty_alpha=0.25,
-                   colorbar_lims=None,
-                   colorbar_loc='right',
-                   colorbar_pad=0.02,
-                   colorbar=True,
-                   n_mc=100,
-                   epsilon=None,
-                   **kwargs):
+            isochrone_met=0,
+            plot_isochrone=True,plot_stars=True,plot_isochrone_uncertainty=True,
+            isochrone_ages=None,isochrone_ages_std=None,
+            age_type='median',
+            check_domain=True,
+            fig=None,ax=None,
+            figsize=None,
+            star_cmap=cmaps['tempo_R'],
+            isochrone_cmap=cmaps['acton'],
+            loc_legend='best',
+            axis_fontsize=12,
+            legend_fontsize=10,
+            colorbar_fontsize=10,
+            selected_isochrone_linewidth=2,
+            uncertainty_alpha=0.25,
+            colorbar_lims=None,
+            colorbar_loc='right',
+            colorbar_pad=0.02,
+            colorbar=True,
+            n_mc=100,
+            nbins=2800,
+            epsilon=None,
+            **kwargs):
+        """
+        Plot a Hertzsprung-Russell (HR) diagram with optional isochrones and stellar ages.
+
+        Parameters
+        ----------
+        isochrone_met : float or str, optional
+            Metallicity value for plotting isochrones (default: 0, choice between -2,-1,0).
+        plot_isochrone : bool, optional
+            Whether to plot isochrones (default: True).
+        plot_stars : bool, optional
+            Whether to plot stars (default: True).
+        plot_isochrone_uncertainty : bool, optional
+            Whether to show isochrone age uncertainties (default: True).
+        isochrone_ages : list or float, optional
+            Ages for which to highlight isochrones.
+        isochrone_ages_std : list or float, optional
+            Uncertainties for isochrone ages.
+        age_type : {'median', 'mean', 'mode'}, optional
+            Statistical estimator to use for coloring stars (default: 'median').
+        check_domain : bool, optional
+            Whether to restrict plotted stars to those within the model domain (default: True).
+        fig, ax : matplotlib Figure and Axes, optional
+            Existing figure and axes to plot on.
+        figsize : tuple, optional
+            Figure size if creating a new figure.
+        star_cmap : str or Colormap, optional
+            Colormap for star points.
+        isochrone_cmap : str or Colormap, optional
+            Colormap for isochrone lines.
+        loc_legend : str, optional
+            Legend location.
+        axis_fontsize, legend_fontsize, colorbar_fontsize : int, optional
+            Font sizes for plot elements.
+        selected_isochrone_linewidth : int, optional
+            Line width for highlighted isochrones.
+        uncertainty_alpha : float, optional
+            Alpha for isochrone uncertainty shading.
+        colorbar_lims : tuple, optional
+            Limits for the colorbar.
+        colorbar_loc : str, optional
+            Location of the colorbar.
+        colorbar_pad : float, optional
+            Padding for the colorbar.
+        colorbar : bool, optional
+            Whether to display the colorbar (default: True).
+        n_mc : int, optional
+            Number of Monte Carlo samples for population age (default: 100).
+        nbins : int, optional
+            Number of bins for age histograms (default: 2800).
+        epsilon : float, optional
+            Small offset added to PDFs to avoid zeros.
+        **kwargs : dict
+            Additional keyword arguments for matplotlib plotting.
+
+        Returns
+        -------
+        fig, ax : matplotlib Figure and Axes
+            The figure and axes containing the HR diagram.
+        """
         if _has_matplotlib == False:
             raise ImportError('matplotlib is required for HR diagram plotting')
 
@@ -702,10 +982,11 @@ class AgeModel:
         new_fig = False
         if fig is None or ax is None:
             new_fig = True
-            if plot_stars == False:
-                figsize = (8,7)
-            else:
-                figsize = (10,7)
+            if figsize is None:
+                if plot_stars == False:
+                    figsize = (8,7)
+                else:
+                    figsize = (10,7)
             fig,ax = plt.subplots(figsize=figsize)
             if self.photometric_type == 'Gaia':
                 ax.set_xlabel(r'$(G_{BP}-G_{RP})_0$ [mag]', fontsize=axis_fontsize)
@@ -795,12 +1076,14 @@ class AgeModel:
             isochrone_ages = [float(isochrone_ages)]
         if isinstance(isochrone_ages_std, (float, int, np.floating, np.integer)):
             isochrone_ages_std = [float(isochrone_ages_std)]
+        isochrone_ages = list(isochrone_ages)
+        isochrone_ages_std = list(isochrone_ages_std)
         while len(isochrone_ages_std) < len(isochrone_ages):
             isochrone_ages_std += [None]
         if plot_isochrone:
             if self.ages is not None and self.ages.shape[1] > 1:
                 if self.pop_age is None:
-                    self.population_age(check_domain=check_domain,n_mc=n_mc,epsilon=epsilon,use_tqdm=False)
+                    self.population_age(check_domain=check_domain,nbins=nbins,n_mc=n_mc,epsilon=epsilon,use_tqdm=False)
                 if self.pop_age is not None:
                     isochrone_ages += [self.pop_age]
                     isochrone_ages_std += [self.pop_age_error]
