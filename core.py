@@ -101,7 +101,7 @@ def _get_mode(arr,min_age=0,max_age=14,nbins=2800):
     hist, bins = np.histogram(arr,bins=nbins,range=(min_age,max_age))
     return bins[np.argmax(hist)] + (bins[1]-bins[0])/2
 
-def _download_isochrones(verbose=True):
+def download_isochrones(verbose=True):
     """
     Download isochrone curve data for plotting from the latest repository.
 
@@ -166,7 +166,7 @@ def get_isochrones(model):
     if model.model_name in loaded_isochrones:
         return loaded_isochrones[model.model_name]
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones')) == False:
-        _download_isochrones(verbose=model.verbose)
+        download_isochrones(verbose=model.verbose)
     
     matching_version = True
     if os.path.exists(os.path.join(NEST_DIR, 'isochrones/version.txt')):
