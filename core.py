@@ -112,7 +112,7 @@ def download_isochrones(verbose=True):
     """
     if input('Isochrone curves for plots do not exist. Download them ? (27.9Mb) [Y/n] (default: Y)') not in ['Y','y','']:
             return None
-    iso_url = "https://github.com/star-age/star-age.github.io/archive/refs/heads/main.zip"
+    iso_url = "https://github.com/star-age/NEST/archive/refs/heads/main.zip"
     iso_dir = os.path.join(NEST_DIR, 'isochrones')
     tmp_zip = os.path.join(NEST_DIR, 'isochrones_tmp.zip')
 
