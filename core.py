@@ -1311,3 +1311,7 @@ class YaPSIModel(AgeModel):
 class HST_BaSTIModel(AgeModel):
     def __init__(self,*args,photometric_type='HST',**kwargs):
         super().__init__('BaSTI_HST',*args, **kwargs, photometric_type=photometric_type)
+
+class new_PARSECModel(AgeModel):
+    def __init__(self, *args, **kwargs):
+        super().__init__('new_PARSEC',*args, **kwargs)
