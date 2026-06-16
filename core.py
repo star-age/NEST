@@ -135,16 +135,16 @@ def download_isochrones(verbose=True):
         urllib.request.urlretrieve(iso_url, tmp_zip)
 
     with zipfile.ZipFile(tmp_zip, 'r') as zip_ref:
-        members = [m for m in zip_ref.namelist() if m.startswith('star-age.github.io-main/isochrones/')]
+        members = [m for m in zip_ref.namelist() if m.startswith('NEST-main/isochrones/')]
         zip_ref.extractall(NEST_DIR, members)
 
-    src = os.path.join(NEST_DIR, 'star-age.github.io-main', 'isochrones')
+    src = os.path.join(NEST_DIR, 'NEST-main', 'isochrones')
     if os.path.exists(iso_dir):
         shutil.rmtree(iso_dir)
     shutil.move(src, iso_dir)
     with open(os.path.join(iso_dir, 'version.txt'), 'w') as f:
         f.write(__version__)
-    shutil.rmtree(os.path.join(NEST_DIR, 'star-age.github.io-main'))
+    shutil.rmtree(os.path.join(NEST_DIR, 'NEST-main'))
     os.remove(tmp_zip)
     if verbose:
         print("Isochrones downloaded and extracted.")
