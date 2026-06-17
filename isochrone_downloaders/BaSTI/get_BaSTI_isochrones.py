@@ -556,7 +556,7 @@ def main():
 
 def download_BaSTI_isochrones(
         output_dir,
-        use_log_age=False,
+        use_log_age,
         age_min,age_max,age_step,
         met_min,met_max,met_step,
         alpha="P00",
