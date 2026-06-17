@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"><meta name="viewport" content="width=device-width"><title>http://basti-iac.oa-abruzzo.inaf.it/isocs.html</title><link rel="stylesheet" type="text/css" href="resource://content-accessible/viewsource.css"></head><body id="viewsource" style="tab-size: 4"><span id="line1"><span></span><span class="doctype">&lt;!DOCTYPE HTML&gt;</span><span>
+</span></span><span id="line2"><span></span><span class="comment">&lt;!--
+</span></span><span id="line3"><span class="comment">	Arcana by HTML5 UP
+</span></span><span id="line4"><span class="comment">	html5up.net | @ajlkn
+</span></span><span id="line5"><span class="comment">	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+</span></span><span id="line6"><span class="comment">--&gt;</span><span>
+</span></span><span id="line7"><span></span><span>&lt;<span class="start-tag">html</span>&gt;</span><span>
+</span></span><span id="line8"><span>	</span><span>&lt;<span class="start-tag">head</span>&gt;</span><span>
+</span></span><span id="line9"><span>		</span><span>&lt;<span class="start-tag">title</span>&gt;</span><span>Basti-iac</span><span>&lt;/<span class="end-tag">title</span>&gt;</span><span>
+</span></span><span id="line10"><span>		</span><span>&lt;<span class="start-tag">meta</span> <span class="attribute-name">charset</span>="<a class="attribute-value">utf-8</a>" <span>/</span>&gt;</span><span>
+</span></span><span id="line11"><span>		</span><span>&lt;<span class="start-tag">meta</span> <span class="attribute-name">name</span>="<a class="attribute-value">viewport</a>" <span class="attribute-name">content</span>="<a class="attribute-value">width=device-width, initial-scale=1</a>" <span>/</span>&gt;</span><span>
+</span></span><span id="line12"><span>		</span><span class="comment">&lt;!--[if lte IE 8]&gt;&lt;script src="assets/js/ie/html5shiv.js"&gt;&lt;/script&gt;&lt;![endif]--&gt;</span><span>
+</span></span><span id="line13"><span>		</span><span>&lt;<span class="start-tag">link</span> <span class="attribute-name">rel</span>="<a class="attribute-value">stylesheet</a>" <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/assets/css/main.css">assets/css/main.css</a>" <span>/</span>&gt;</span><span>
+</span></span><span id="line14"><span>		</span><span class="comment">&lt;!--[if lte IE 8]&gt;&lt;link rel="stylesheet" href="assets/css/ie8.css" /&gt;&lt;![endif]--&gt;</span><span>
+</span></span><span id="line15"><span>		</span><span class="comment">&lt;!--[if lte IE 9]&gt;&lt;link rel="stylesheet" href="assets/css/ie9.css" /&gt;&lt;![endif]--&gt;</span><span>
+</span></span><span id="line16"><span>		
+</span></span><span id="line17"><span>		</span><span>&lt;<span class="start-tag">script</span> <span class="attribute-name">src</span>="<a class="attribute-value" href="view-source:http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js">http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">script</span>&gt;</span><span>
+</span></span><span id="line18"><span>
+</span></span><span id="line19"><span>		</span><span>&lt;<span class="start-tag">script</span>&gt;</span><span>
+</span></span><span id="line20"><span>			$(function() {
+</span></span><span id="line21"><span>        	    //BC OPTIONS//
+</span></span><span id="line22"><span>                $("#text-bolcor").load("files/bolcoroptions.txt");
+</span></span><span id="line23"><span>    	        //ALPHA OPTIONS//
+</span></span><span id="line24"><span>                $("#text-alpha").load("files/alphaoptions.txt");		        
+</span></span><span id="line25"><span>                //GRID OPTIONS//
+</span></span><span id="line26"><span>				$("#text-alpha").change(function() {
+</span></span><span id="line27"><span>					$("#text-grid").load("textdataISOCS/" + $(this).val() + ".isc");
+</span></span><span id="line28"><span>				});
+</span></span><span id="line29"><span>               //METAL OPTIONS//
+</span></span><span id="line30"><span>				$("#text-grid").change(function() {
+</span></span><span id="line31"><span>					$("#text-metal").load("textdataISOCS/" + $("#text-grid").val() + ".isc");
+</span></span><span id="line32"><span>				});
+</span></span><span id="line33"><span>	   	        //PRECOMPILED ISOCHRONES//
+</span></span><span id="line34"><span>      			$("#text-bolcor").change(function() {
+</span></span><span id="line35"><span>				$("#text-isoc").load("textdataISOCS/" + $("#text-grid").val() + $("#text-metal").val() + $(this).val() + ".isc");
+</span></span><span id="line36"><span>				});
+</span></span><span id="line37"><span>				
+</span></span><span id="line38"><span>				//RESTORE PAGE AFTER CLICK BACK BUTTON//
+</span></span><span id="line39"><span>				window.addEventListener( "pageshow", function ( event ) {
+</span></span><span id="line40"><span>                   var historyTraversal = event.persisted || 
+</span></span><span id="line41"><span>                   ( typeof window.performance != "undefined" &amp;&amp; 
+</span></span><span id="line42"><span>                      window.performance.navigation.type === 2 );
+</span></span><span id="line43"><span>                   if ( historyTraversal ) {
+</span></span><span id="line44"><span>                    // Handle page restore.
+</span></span><span id="line45"><span>                      window.location.reload();
+</span></span><span id="line46"><span>                                           }
+</span></span><span id="line47"><span>                });
+</span></span><span id="line48"><span>
+</span></span><span id="line49"><span>                //RESET ALPHA SELECTION AFTER CLICKING ON PRECOMPUTED FILES                                
+</span></span><span id="line50"><span>                $("#text-isoc").bind("click", function () {
+</span></span><span id="line51"><span>                $("#text-alpha")[0].selectedIndex = 0;
+</span></span><span id="line52"><span>                });
+</span></span><span id="line53"><span>
+</span></span><span id="line54"><span>                //RESET GRID SELECTION AFTER CLICKING ON PRECOMPUTED FILES                                
+</span></span><span id="line55"><span>                $("#text-isoc").bind("click", function () {
+</span></span><span id="line56"><span>                $("#text-grid")[0].selectedIndex = 0;
+</span></span><span id="line57"><span>                });
+</span></span><span id="line58"><span>                
+</span></span><span id="line59"><span>                //RESET METALLICITY SELECTION AFTER CLICKING ON PRECOMPUTED FILES                                
+</span></span><span id="line60"><span>                $("#text-isoc").bind("click", function () {
+</span></span><span id="line61"><span>                $("#text-metal")[0].selectedIndex = 0;
+</span></span><span id="line62"><span>                });
+</span></span><span id="line63"><span>
+</span></span><span id="line64"><span>                //RESET PHOTOMETRIC BAND SELECTION AFTER CLICKING ON PRECOMPUTED FILES                                
+</span></span><span id="line65"><span>                $("#text-isoc").bind("click", function () {
+</span></span><span id="line66"><span>                $("#text-bolcor")[0].selectedIndex = 0;
+</span></span><span id="line67"><span>                });
+</span></span><span id="line68"><span>                
+</span></span><span id="line69"><span>			});
+</span></span><span id="line70"><span>		</span><span>&lt;/<span class="end-tag">script</span>&gt;</span><span>
+</span></span><span id="line71"><span>		
+</span></span><span id="line72"><span>	</span><span>&lt;/<span class="end-tag">head</span>&gt;</span><span>
+</span></span><span id="line73"><span>	
+</span></span><span id="line74"><span>	</span><span>&lt;<span class="start-tag">body</span>&gt;</span><span>
+</span></span><span id="line75"><span>
+</span></span><span id="line76"><span>		</span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">id</span>="<a class="attribute-value">page-wrapper</a>"&gt;</span><span>
+</span></span><span id="line77"><span>			</span><span class="comment">&lt;!-- Gigantic Heading --&gt;</span><span>
+</span></span><span id="line78"><span>			</span><span>&lt;<span class="start-tag">section</span> <span class="attribute-name">class</span>="<a class="attribute-value">wrapper style2</a>"&gt;</span><span>
+</span></span><span id="line79"><span>				</span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">container</a>"&gt;</span><span>
+</span></span><span id="line80"><span>					</span><span>&lt;<span class="start-tag">header</span> <span class="attribute-name">class</span>="<a class="attribute-value">major</a>"&gt;</span><span>
+</span></span><span id="line81"><span>					   </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">control-group4</a>"&gt;</span><span>
+</span></span><span id="line82"><span>							</span><span>&lt;<span class="start-tag">h1</span>&gt;</span><span>BaSTI</span><span>&lt;/<span class="end-tag">h1</span>&gt;</span><span>
+</span></span><span id="line83"><span>							</span><span>&lt;<span class="start-tag">p</span>&gt;</span><span>a </span><span>&lt;<span class="start-tag">strong</span>&gt;</span><span>Ba</span><span>&lt;/<span class="end-tag">strong</span>&gt;</span><span>g of </span><span>&lt;<span class="start-tag">strong</span>&gt;</span><span>S</span><span>&lt;/<span class="end-tag">strong</span>&gt;</span><span>tellar </span><span>&lt;<span class="start-tag">strong</span>&gt;</span><span>T</span><span>&lt;/<span class="end-tag">strong</span>&gt;</span><span>racks and </span><span>&lt;<span class="start-tag">strong</span>&gt;</span><span>I</span><span>&lt;/<span class="end-tag">strong</span>&gt;</span><span>sochrones</span><span>&lt;/<span class="end-tag">p</span>&gt;</span><span>
+</span></span><span id="line84"><span>						</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line85"><span>					</span><span>&lt;/<span class="end-tag">header</span>&gt;</span><span>
+</span></span><span id="line86"><span>				</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line87"><span>			</span><span>&lt;/<span class="end-tag">section</span>&gt;</span><span>
+</span></span><span id="line88"><span>
+</span></span><span id="line89"><span>		</span><span class="comment">&lt;!-- Header --&gt;</span><span>
+</span></span><span id="line90"><span>			</span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">id</span>="<a class="attribute-value">header</a>"&gt;</span><span>
+</span></span><span id="line91"><span>				</span><span>&lt;<span class="start-tag">nav</span> <span class="attribute-name">id</span>="<a class="attribute-value">nav</a>"&gt;</span><span>
+</span></span><span id="line92"><span>					</span><span>&lt;<span class="start-tag">ul</span>&gt;</span><span>
+</span></span><span id="line93"><span>						</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/index.html">index.html</a>"&gt;</span><span>Home</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line94"><span>						</span><span>&lt;<span class="start-tag">li</span> <span class="attribute-name">class</span>="<a class="attribute-value">current</a>"&gt;</span><span>
+</span></span><span id="line95"><span>							</span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/isocs.html#">#</a>"&gt;</span><span>Models</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span>
+</span></span><span id="line96"><span>							</span><span>&lt;<span class="start-tag">ul</span>&gt;</span><span>
+</span></span><span id="line97"><span>								</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/tracks.html">tracks.html</a>"&gt;</span><span>Evolutionary Tracks</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line98"><span>								</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/hbmodels.html">hbmodels.html</a>"&gt;</span><span>HB models</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line99"><span>                                </span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/wdmodels.html">wdmodels.html</a>"&gt;</span><span>WD models</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line100"><span>								</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/isocs.html">isocs.html</a>"&gt;</span><span>Isochrones</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line101"><span>								</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/astero.html">astero.html</a>"&gt;</span><span>Asteroseismology</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line102"><span>							</span><span>&lt;/<span class="end-tag">ul</span>&gt;</span><span>
+</span></span><span id="line103"><span>						</span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line104"><span>						</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span>
+</span></span><span id="line105"><span>					 		</span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/isocs.html#">#</a>"&gt;</span><span>Tools</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span>
+</span></span><span id="line106"><span>							</span><span>&lt;<span class="start-tag">ul</span>&gt;</span><span>
+</span></span><span id="line107"><span>								</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/syncmd.html">syncmd.html</a>"&gt;</span><span>Synthetic CMD</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line108"><span>								</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/synhb.html">synhb.html</a>"&gt;</span><span>Synthetic HB</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line109"><span>								</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/lumfun.html">lumfun.html</a>"&gt;</span><span>Luminosity functions</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line110"><span>							</span><span>&lt;/<span class="end-tag">ul</span>&gt;</span><span>
+</span></span><span id="line111"><span>						</span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line112"><span>						</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/news.html">news.html</a>"&gt;</span><span>News</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line113"><span>						</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/basti-old/">http://basti-iac.oa-abruzzo.inaf.it/basti-old/</a>"&gt;</span><span>BaSTI: Previous release</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line114"><span>						</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/papers.html">papers.html</a>"&gt;</span><span>Papers</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line115"><span>						</span><span>&lt;<span class="start-tag">li</span>&gt;</span><span></span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/requests.html">requests.html</a>"&gt;</span><span>Contact</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">li</span>&gt;</span><span>
+</span></span><span id="line116"><span>					</span><span>&lt;/<span class="end-tag">ul</span>&gt;</span><span>
+</span></span><span id="line117"><span>				</span><span>&lt;/<span class="end-tag">nav</span>&gt;</span><span>
+</span></span><span id="line118"><span>			</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line119"><span>        </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line120"><span>
+</span></span><span id="line121"><span>
+</span></span><span id="line122"><span></span><span>&lt;<span class="start-tag">p</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">p</span>&gt;</span><span>
+</span></span><span id="line123"><span>
+</span></span><span id="line124"><span>				</span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">container</a>" <span class="attribute-name">style</span>="<a class="attribute-value">text-align:center; position: relative; left: 0%</a>"&gt;</span><span>			
+</span></span><span id="line125"><span>					</span><span>&lt;<span class="start-tag">input</span> <span class="attribute-name">type</span>="<a class="attribute-value">button</a>" <span class="attribute-name">value</span>="<a class="attribute-value">Help</a>" <span class="attribute-name">onclick</span>="<a class="attribute-value">window.open('helpisocs.html', 'newwindow', 'width=650,height=500'); return false;</a>"<span>/</span>&gt;</span><span>
+</span></span><span id="line126"><span>				</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line127"><span></span><span>&lt;<span class="start-tag">p</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">p</span>&gt;</span><span>
+</span></span><span id="line128"><span>
+</span></span><span id="line129"><span>			</span><span class="comment">&lt;!--  SELECTION BUTTONS --&gt;</span><span>
+</span></span><span id="line130"><span>
+</span></span><span id="line131"><span>	</span><span>&lt;<span class="start-tag">form</span> <span class="attribute-name">action</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/cgi-bin/isoc-get.py">/cgi-bin/isoc-get.py</a>" <span class="attribute-name">method</span>="<a class="attribute-value">get</a>"&gt;</span><span>
+</span></span><span id="line132"><span> 		</span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">strike</a>"&gt;</span><span>
+</span></span><span id="line133"><span>			</span><span>&lt;<span class="start-tag">span</span>&gt;</span><span></span><span>&lt;<span class="start-tag">h2</span>&gt;</span><span>Isochrones</span><span>&lt;/<span class="end-tag">h2</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">span</span>&gt;</span><span>
+</span></span><span id="line134"><span>
+</span></span><span id="line135"><span></span><span class="comment">&lt;!--&lt;div class="container" style="text-align:center; position: relative; left: 0%"&gt;--&gt;</span><span>
+</span></span><span id="line136"><span></span><span class="comment">&lt;!-- &lt;input type="button" value="Very important information" onclick="window.open('messageALPHA.html', 'newwindow', 'width=650,height=500'); return false;" style="color: #FA3F17"/&gt;--&gt;</span><span>
+</span></span><span id="line137"><span></span><span class="comment">&lt;!--&lt;/div&gt;--&gt;</span><span>
+</span></span><span id="line138"><span></span><span>&lt;<span class="start-tag">p</span>&gt;</span><span></span><span>&lt;/<span class="end-tag">p</span>&gt;</span><span>            
+</span></span><span id="line139"><span>
+</span></span><span id="line140"><span>			</span><span>&lt;<span class="start-tag">div</span>&gt;</span><span>
+</span></span><span id="line141"><span>				</span><span>&lt;<span class="start-tag">input</span> <span class="attribute-name">type</span>="<a class="attribute-value">submit</a>" <span class="attribute-name">value</span>="<a class="attribute-value">Submit</a>" <span>/</span>&gt;</span><span>
+</span></span><span id="line142"><span>			</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line143"><span>		</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line144"><span>
+</span></span><span id="line145"><span>		</span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">container</a>" <span class="attribute-name">style</span>="<a class="attribute-value">text-align:center; position: relative; left: 0%</a>"&gt;</span><span>
+</span></span><span id="line146"><span>            </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">control-group6</a>"&gt;</span><span>
+</span></span><span id="line147"><span>                </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">column</a>"&gt;</span><span>
+</span></span><span id="line148"><span>                    </span><span>&lt;<span class="start-tag">h1</span>&gt;</span><span>Heavy element mixture</span><span>&lt;/<span class="end-tag">h1</span>&gt;</span><span>
+</span></span><span id="line149"><span>                    </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">select</a>"&gt;</span><span>
+</span></span><span id="line150"><span>                        </span><span>&lt;<span class="start-tag">select</span> <span class="attribute-name">id</span>="<a class="attribute-value">text-alpha</a>" <span class="attribute-name">name</span>="<a class="attribute-value">alpha</a>"&gt;</span><span>
+</span></span><span id="line151"><span>                        </span><span>&lt;/<span class="end-tag">select</span>&gt;</span><span>
+</span></span><span id="line152"><span>                        </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">select__arrow</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line153"><span>                    </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line154"><span>                </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line155"><span>                </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">column</a>"&gt;</span><span>
+</span></span><span id="line156"><span>                    </span><span>&lt;<span class="start-tag">h1</span>&gt;</span><span>Available grids</span><span>&lt;/<span class="end-tag">h1</span>&gt;</span><span>
+</span></span><span id="line157"><span>                    </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">select</a>"&gt;</span><span>
+</span></span><span id="line158"><span>                        </span><span>&lt;<span class="start-tag">select</span> <span class="attribute-name">id</span>="<a class="attribute-value">text-grid</a>" <span class="attribute-name">name</span>="<a class="attribute-value">grid</a>"&gt;</span><span>
+</span></span><span id="line159"><span>                            </span><span>&lt;<span class="start-tag">option</span> <span class="attribute-name">selected</span> <span class="attribute-name">value</span>="<a class="attribute-value">None</a>"&gt;</span><span>Please, select mixture</span><span>&lt;/<span class="end-tag">option</span>&gt;</span><span>
+</span></span><span id="line160"><span>                        </span><span>&lt;/<span class="end-tag">select</span>&gt;</span><span>
+</span></span><span id="line161"><span>                        </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">select__arrow</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line162"><span>                    </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line163"><span>                </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>                    
+</span></span><span id="line164"><span>            </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>                    
+</span></span><span id="line165"><span>            </span><span>&lt;<span class="start-tag">p</span>&gt;</span><span> </span><span>&lt;/<span class="end-tag">p</span>&gt;</span><span>
+</span></span><span id="line166"><span>
+</span></span><span id="line167"><span>			
+</span></span><span id="line168"><span>            </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">control-group5</a>"&gt;</span><span>
+</span></span><span id="line169"><span>              </span><span>&lt;<span class="start-tag">h1</span>&gt;</span><span>Metallicity </span><span>&lt;<span class="start-tag">br</span>&gt;</span><span>Z <span class="entity"><span>&amp;</span>ensp;</span> : <span class="entity"><span>&amp;</span>ensp;</span> [Fe/H] <span class="entity"><span>&amp;</span>ensp;</span> : <span class="entity"><span>&amp;</span>ensp;</span> Helium</span><span>&lt;/<span class="end-tag">h1</span>&gt;</span><span>
+</span></span><span id="line170"><span>              </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">select</a>"&gt;</span><span>
+</span></span><span id="line171"><span>                </span><span>&lt;<span class="start-tag">select</span> <span class="attribute-name">id</span>="<a class="attribute-value">text-metal</a>" <span class="attribute-name">name</span>="<a class="attribute-value">metal</a>"&gt;</span><span>
+</span></span><span id="line172"><span>                  </span><span>&lt;<span class="start-tag">option</span> <span class="attribute-name">value</span>="<a class="attribute-value">None</a>"&gt;</span><span>Please select grid</span><span>&lt;/<span class="end-tag">option</span>&gt;</span><span>					
+</span></span><span id="line173"><span>                </span><span>&lt;/<span class="end-tag">select</span>&gt;</span><span>
+</span></span><span id="line174"><span>                </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">select__arrow</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line175"><span>              </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line176"><span>              </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">row 50%</a>"&gt;</span><span>
+</span></span><span id="line177"><span>                </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">12u</a>"&gt;</span><span>
+</span></span><span id="line178"><span>                  </span><span>&lt;<span class="start-tag">input</span> <span class="attribute-name">type</span>="<a class="attribute-value">text</a>" <span class="attribute-name">name</span>="<a class="attribute-value">imetal</a>" <span class="attribute-name">id</span>="<a class="attribute-value">imetal</a>" <span class="attribute-name">placeholder</span>="<a class="attribute-value">Z for interp.</a>" <span>/</span>&gt;</span><span>
+</span></span><span id="line179"><span>                </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line180"><span>              </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line181"><span>              </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">row 50%</a>"&gt;</span><span>
+</span></span><span id="line182"><span>                </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">12u</a>"&gt;</span><span>
+</span></span><span id="line183"><span>                  </span><span>&lt;<span class="start-tag">input</span> <span class="attribute-name">type</span>="<a class="attribute-value">text</a>" <span class="attribute-name">name</span>="<a class="attribute-value">imetalh</a>" <span class="attribute-name">id</span>="<a class="attribute-value">imetalh</a>" <span class="attribute-name">placeholder</span>="<a class="attribute-value">[Fe/H] for interp.</a>" <span>/</span>&gt;</span><span>
+</span></span><span id="line184"><span>                </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line185"><span>              </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span> 
+</span></span><span id="line186"><span>            </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line187"><span>
+</span></span><span id="line188"><span>		</span><span>&lt;<span class="start-tag">p</span>&gt;</span><span> </span><span>&lt;/<span class="end-tag">p</span>&gt;</span><span>
+</span></span><span id="line189"><span>			
+</span></span><span id="line190"><span>			</span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">control-group</a>"&gt;</span><span>
+</span></span><span id="line191"><span>				</span><span>&lt;<span class="start-tag">h1</span>&gt;</span><span>Age (Myr)</span><span>&lt;/<span class="end-tag">h1</span>&gt;</span><span>                    
+</span></span><span id="line192"><span> 					</span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">12u</a>"&gt;</span><span>
+</span></span><span id="line193"><span>						</span><span>&lt;<span class="start-tag">input</span> <span class="attribute-name">type</span>="<a class="attribute-value">text</a>" <span class="attribute-name">name</span>="<a class="attribute-value">iage</a>" <span class="attribute-name">id</span>="<a class="attribute-value">iage</a>" <span class="attribute-name">placeholder</span>="<a class="attribute-value">Age1--Age2, step</a>" <span>/</span>&gt;</span><span>
+</span></span><span id="line194"><span>					</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line195"><span>			</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line196"><span>
+</span></span><span id="line197"><span>            </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">control-group2</a>"&gt;</span><span>
+</span></span><span id="line198"><span>              </span><span>&lt;<span class="start-tag">h1</span>&gt;</span><span>Phot. System</span><span>&lt;/<span class="end-tag">h1</span>&gt;</span><span>
+</span></span><span id="line199"><span>              </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">select</a>"&gt;</span><span>
+</span></span><span id="line200"><span>                </span><span>&lt;<span class="start-tag">select</span> <span class="attribute-name">id</span>="<a class="attribute-value">text-bolcor</a>" <span class="attribute-name">name</span>="<a class="attribute-value">bcsel</a>"&gt;</span><span>
+</span></span><span id="line201"><span>                </span><span>&lt;/<span class="end-tag">select</span>&gt;</span><span>
+</span></span><span id="line202"><span>                </span><span>&lt;<span class="start-tag">div</span> <span class="attribute-name">class</span>="<a class="attribute-value">select__arrow</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line203"><span>              </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>  
+</span></span><span id="line204"><span>              </span><span>&lt;<span class="start-tag">div</span>&gt;</span><span>
+</span></span><span id="line205"><span>                </span><span>&lt;<span class="start-tag">a</span> <span class="attribute-name">id</span>="<a class="attribute-value">text-isoc</a>" <span class="attribute-name">href</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/helpisocs.html">helpisocs.html</a>"&gt;</span><span> Pre-computed isochrones</span><span>&lt;/<span class="end-tag">a</span>&gt;</span><span>
+</span></span><span id="line206"><span>              </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line207"><span>            </span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line208"><span>			 
+</span></span><span id="line209"><span>		</span><span>&lt;/<span class="end-tag">div</span>&gt;</span><span>
+</span></span><span id="line210"><span>	</span><span>&lt;/<span class="end-tag">form</span>&gt;</span><span>
+</span></span><span id="line211"><span>
+</span></span><span id="line212"><span>
+</span></span><span id="line213"><span>
+</span></span><span id="line214"><span>		</span><span class="comment">&lt;!-- Scripts --&gt;</span><span>
+</span></span><span id="line215"><span>			</span><span>&lt;<span class="start-tag">script</span> <span class="attribute-name">src</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/assets/js/jquery.min.js">assets/js/jquery.min.js</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">script</span>&gt;</span><span>
+</span></span><span id="line216"><span>			</span><span>&lt;<span class="start-tag">script</span> <span class="attribute-name">src</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/assets/js/jquery.dropotron.min.js">assets/js/jquery.dropotron.min.js</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">script</span>&gt;</span><span>
+</span></span><span id="line217"><span>			</span><span>&lt;<span class="start-tag">script</span> <span class="attribute-name">src</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/assets/js/skel.min.js">assets/js/skel.min.js</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">script</span>&gt;</span><span>
+</span></span><span id="line218"><span>			</span><span>&lt;<span class="start-tag">script</span> <span class="attribute-name">src</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/assets/js/util.js">assets/js/util.js</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">script</span>&gt;</span><span>
+</span></span><span id="line219"><span>			</span><span class="comment">&lt;!--[if lte IE 8]&gt;&lt;script src="assets/js/ie/respond.min.js"&gt;&lt;/script&gt;&lt;![endif]--&gt;</span><span>
+</span></span><span id="line220"><span>			</span><span>&lt;<span class="start-tag">script</span> <span class="attribute-name">src</span>="<a class="attribute-value" href="view-source:http://basti-iac.oa-abruzzo.inaf.it/assets/js/main.js">assets/js/main.js</a>"&gt;</span><span></span><span>&lt;/<span class="end-tag">script</span>&gt;</span><span>
+</span></span><span id="line221"><span>
+</span></span><span id="line222"><span>	</span><span>&lt;/<span class="end-tag">body</span>&gt;</span><span>
+</span></span><span id="line223"><span></span><span>&lt;/<span class="end-tag">html</span>&gt;</span><span>
+</span></span><span id="line224"><span></span></span></body></html>

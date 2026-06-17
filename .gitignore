@@ -1,9 +1,7 @@
 __pycache__
 *.csv
 *.dat
-*.txt
 *.fits
-BaSTI/
 *.h5
 *.isc_*
 *.Gaia*

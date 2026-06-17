@@ -1,0 +1,4 @@
+<option value="P00O0D0E0Y247">Overshooting: No, Diffusion: No, Mass loss: η = 0.0, He = 0.247</option>
+<option value="P00O1D0E0Y247">Overshooting: Yes, Diffusion: No, Mass loss: η = 0.0, He = 0.247</option>
+<option value="P00O1D0E1Y247">Overshooting: Yes, Diffusion: No, Mass loss: η = 0.3, He = 0.247</option>
+<option value="P00O1D1E1Y247">Overshooting: Yes, Diffusion: Yes, Mass loss: η = 0.3, He = 0.247</option>

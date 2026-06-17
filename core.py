@@ -281,8 +281,13 @@ class AgeModel:
 
     Provides methods for loading models, predicting ages, checking input domains, and plotting HR diagrams.
     """
-    def __init__(self,model_name,use_sklearn=True,use_tqdm=True,photometric_type=None,verbose=True):
+    def __init__(self,model_name,version='default',use_sklearn=True,use_tqdm=True,photometric_type=None,verbose=True):
         self.model_name = model_name
+        if version == 'default':
+            version = ''
+        else:
+            version = 'v' + version
+        self.version = version
         self.use_sklearn = use_sklearn and _has_sklearn
         self.use_tqdm = use_tqdm and _has_tqdm
         self.verbose = verbose
@@ -291,7 +296,14 @@ class AgeModel:
         self.photometric_type = photometric_type
         domain_path = os.path.join(NEST_DIR, 'domain.pkl')
         domain = pickle.load(open(domain_path, 'rb'))
-        if model_name in domain:
+        if model_name + version in domain:
+            self.domain = domain[model_name + version]
+            self.space_col = np.array(self.domain['spaces'][0])
+            self.space_mag = np.array(self.domain['spaces'][1])
+            self.space_met = np.array(self.domain['spaces'][2])
+            self.domain = self.domain['grid']
+            self.domain = np.array(self.domain,dtype=bool)
+        elif model_name in domain:
             self.domain = domain[model_name]
             self.space_col = np.array(self.domain['spaces'][0])
             self.space_mag = np.array(self.domain['spaces'][1])
@@ -313,7 +325,7 @@ class AgeModel:
         self.stds = None
         self.pop_age = None
         self.pop_age_error = None
-        self.load_neural_network(self.model_name)
+        self.load_neural_network(self.model_name,self.version)
 
     def __repr__(self):
         return self.__str__()
@@ -367,7 +379,7 @@ class AgeModel:
 
         return {'NN':mlp, 'Scaler':scaler}
 
-    def load_neural_network(self, model_name):
+    def load_neural_network(self, model_name, version):
         """
         Load a neural network pretrained on the specified stellar evolution model, with its associated scaler.
 
@@ -381,19 +393,19 @@ class AgeModel:
         Loads scikit-learn objects if available, otherwise loads numpy arrays of weights and biases.
         """
         if self.use_sklearn:
-            model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name}')
-            model_path_reduced = os.path.join(NEST_DIR, 'models', f'{model_name}_BPRP')
+            model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name + version}')
+            model_path_reduced = os.path.join(NEST_DIR, 'models', f'{model_name + version}_BPRP')
             if os.path.exists(model_path_full + '.mlp'):
-                nn = self.load_mlp_and_scaler(os.path.join(NEST_DIR, 'models', model_name))
+                nn = self.load_mlp_and_scaler(os.path.join(NEST_DIR, 'models', model_name + version))
                 self.neural_networks['full'] = nn['NN']
                 self.scalers['full'] = nn['Scaler']
             if os.path.exists(model_path_reduced + '.mlp'):
-                nn = self.load_mlp_and_scaler(os.path.join(NEST_DIR, 'models', model_name + '_BPRP'))
+                nn = self.load_mlp_and_scaler(os.path.join(NEST_DIR, 'models', model_name + version + '_BPRP'))
                 self.neural_networks['reduced'] = nn['NN']
                 self.scalers['reduced'] = nn['Scaler']
         else:
-            model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name}.mlp')
-            model_path_reduced = os.path.join(NEST_DIR, 'models', f'{model_name}_BPRP.mlp')
+            model_path_full = os.path.join(NEST_DIR, 'models', f'{model_name + version}.mlp')
+            model_path_reduced = os.path.join(NEST_DIR, 'models', f'{model_name + version}_BPRP.mlp')
             if os.path.exists(model_path_full):
                 nn_json = json.load(open(model_path_full, 'r'))
                 self.neural_networks['full'] = {
@@ -842,6 +854,7 @@ class AgeModel:
             isochrone_met=0,
             plot_isochrone=True,plot_stars=True,plot_isochrone_uncertainty=True,
             isochrone_ages=None,isochrone_ages_std=None,
+            isochrone_set=None,
             age_type='median',
             check_domain=True,
             fig=None,ax=None,
@@ -879,6 +892,8 @@ class AgeModel:
             Ages for which to highlight isochrones.
         isochrone_ages_std : list or float, optional
             Uncertainties for isochrone ages.
+        isochrone_set : str, optional
+            Path to json file containing set of isochrones
         age_type : {'median', 'mean', 'mode'}, optional
             Statistical estimator to use for coloring stars (default: 'median').
         check_domain : bool, optional
@@ -995,17 +1010,21 @@ class AgeModel:
                 ax.set_xlabel(r'$(F606W-F814W)$ [mag]', fontsize=axis_fontsize)
                 ax.set_ylabel(r'$F814W$ [mag]', fontsize=axis_fontsize)
             ax.tick_params(labelsize=axis_fontsize,axis='both')
-        isochrones = get_isochrones(self)
+
+        if isochrone_set == None:
+            isochrones = get_isochrones(self)
+        else:
+            isochrones = json.load(open(isochrone_set, 'r'))
+
         if isochrones is None:
             raise ValueError('Isochrones not available for this model')
         if type(isochrone_met) is not str:
             if np.issubdtype(type(isochrone_met), np.number) is False:
                 raise ValueError('isochrone_met must be a float or int')
-            isochrone_met = str(round(isochrone_met))
-        if isochrone_met not in isochrones.keys():
-            if self.verbose:
-                print('Metallicity not available for this model (-2,-1,0), using [M/H]=0 instead')
-            isochrone_met = '0'
+            isochrone_met = str(round(isochrone_met,2))
+        print(isochrone_met)
+        isochrone_met = self.get_closest_metallicity(isochrones,isochrone_met)
+        print(isochrone_met,isochrones.keys())
         isochrones = isochrones[isochrone_met]
         
         lines = []
@@ -1102,18 +1121,18 @@ class AgeModel:
             for i, (isochrone_age, isochrone_age_std) in enumerate(zip(isochrone_ages,isochrone_ages_std)):
                 if np.isnan(isochrone_age):
                     continue
-                isochrone = self.get_closest_isochrone(isochrone_age)
+                isochrone = self.get_closest_isochrone(isochrone_age,isochrone_met,isochrone_set)
                 color = isochrone_cmap((i+1)/(len(isochrone_ages)+1))
 
                 if isochrone_age_std is not None and plot_isochrone_uncertainty:
                     if type(isochrone_age_std) is tuple or type(isochrone_age_std) is list:
-                        isochrone_low = self.get_closest_isochrone(isochrone_age_std[0])
-                        isochrone_upp = self.get_closest_isochrone(isochrone_age_std[1])
+                        isochrone_low = self.get_closest_isochrone(isochrone_age_std[0],isochrone_met,isochrone_set)
+                        isochrone_upp = self.get_closest_isochrone(isochrone_age_std[1],isochrone_met,isochrone_set)
                         label = r'$\tau$' + f'={isochrone_age:.2f} ' + r'$^{+' + f'{isochrone_age_std[1]-isochrone_age:.2f}' + r'}_{-' + f'{isochrone_age - isochrone_age_std[0]:.2f}' + r'}$ Gyr'
                     else:
                         label = r'$\tau$' + f'={isochrone_age:.2f} ' + r'$\pm$' + f' {isochrone_age_std:.2f} Gyr'
-                        isochrone_low = self.get_closest_isochrone(isochrone_age - isochrone_age_std)
-                        isochrone_upp = self.get_closest_isochrone(isochrone_age + isochrone_age_std)
+                        isochrone_low = self.get_closest_isochrone(isochrone_age - isochrone_age_std,isochrone_met,isochrone_set)
+                        isochrone_upp = self.get_closest_isochrone(isochrone_age + isochrone_age_std,isochrone_met,isochrone_set)
                     verts = np.concatenate([
                         np.column_stack([isochrone_low['BP-RP'], isochrone_low['MG']]),
                         np.column_stack([isochrone_upp['BP-RP'][::-1], isochrone_upp['MG'][::-1]])
@@ -1185,9 +1204,30 @@ class AgeModel:
             ax.set_ylim(10,-5)
             plt.tight_layout()
             return fig,ax
+        
+    def get_closest_metallicity(self,isochrones,metallicity):
+        metallicity = str(metallicity)
+        if metallicity in isochrones.keys():
+            return metallicity
+        if '0' in list(isochrones.keys()):
+            isochrone_met = '0'
+        else:
+            isochrone_met = list(isochrones.keys())[len(isochrones.keys())//2]
+        if self.verbose:
+            available_mets = ''
+            for key in isochrones.keys():
+                available_mets += key + ','
+            available_mets = available_mets[:-1]
+            print('Metallicity not available for this model (available metallicities : {}), using [M/H]={} instead'.format(available_mets,isochrone_met))
+        return isochrone_met
     
-    def get_closest_isochrone(self,age_target):
-        isos_dic = get_isochrones(self)['0']
+    def get_closest_isochrone(self,age_target,isochrone_met=0,isochrone_set=None):
+        if isochrone_set is None:
+            isos = get_isochrones(self)
+        else:
+            isos = json.load(open(isochrone_set, 'r'))
+        self.get_closest_metallicity(isos,isochrone_met)
+        isos_dic = isos[str(isochrone_met)]
         isos_dic = sorted(isos_dic, key=lambda x: x['age'])
 
         if self.model_name == 'BaSTI':#Can interpolate isochrones for BaSTI model
@@ -1311,7 +1351,3 @@ class YaPSIModel(AgeModel):
 class HST_BaSTIModel(AgeModel):
     def __init__(self,*args,photometric_type='HST',**kwargs):
         super().__init__('BaSTI_HST',*args, **kwargs, photometric_type=photometric_type)
-
-class new_PARSECModel(AgeModel):
-    def __init__(self, *args, **kwargs):
-        super().__init__('new_PARSEC',*args, **kwargs)
