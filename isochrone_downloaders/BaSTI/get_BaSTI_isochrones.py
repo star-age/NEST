@@ -316,7 +316,6 @@ def submit_basti_request(session: requests.Session,
             # Try to find a download link
             for a in soup.find_all("a", href=True):
                 href = a["href"]
-                print(f"Found download link: {href}")
                 full_url = urljoin(BASTI_BASE_URL, href)
                 r2 = requests.get(full_url, verify=False, timeout=120)
                 r2.raise_for_status()
@@ -346,7 +345,6 @@ def extract_tar_gz(tar_path: Path, extract_to: Path) -> Optional[Path]:
         Path to extracted directory or None on failure
     """
     try:
-        print(f"Extracting: {tar_path}")
         with tarfile.open(tar_path, "r:gz") as tar:
             tar.extractall(path=extract_to,filter='fully_trusted')
         
@@ -356,7 +354,6 @@ def extract_tar_gz(tar_path: Path, extract_to: Path) -> Optional[Path]:
         
         if len(extracted_items) == 1 and extracted_items[0].is_dir():
             extracted_dir = extracted_items[0]
-            print(f"Extracted to: {extracted_dir}")
             return extracted_dir
         else:
             print(f"Warning: Unexpected extraction structure. Found {len(extracted_items)} items")
@@ -516,9 +513,6 @@ def main():
         age_max = float(input("age (yr) max: "))
         age_step = float(input("age (yr) step: "))
     
-    ages = generate_grid(age_min, age_max, age_step)
-    print(f"Generated {len(ages)} age points")
-    
     # ========================================================
     # Metallicity Selection (Grid range)
     # ========================================================
@@ -531,8 +525,6 @@ def main():
     met_max = float(input("[Fe/H] max: "))
     met_step = float(input("[Fe/H] step: "))
     
-    metallicities = generate_grid(met_min, met_max, met_step)
-    
     # ========================================================
     # Output Directory
     # ========================================================
@@ -544,13 +536,39 @@ def main():
     
     print("\n" + "=" * 70)
 
-    download_isochrones(output_dir,use_log_age,ages,metallicities,alpha,grid,phot_system)
+    input([output_dir,
+        use_log_age,
+        age_min,age_max,age_step,
+        met_min,met_max,met_step,
+        alpha,
+        grid,
+        phot_system])
 
-def download_isochrones(output_dir,use_log_age,ages,metallicities,alpha,grid,phot_system):
+    download_BaSTI_isochrones(
+        output_dir,
+        use_log_age,
+        age_min,age_max,age_step,
+        met_min,met_max,met_step,
+        alpha,
+        grid,
+        phot_system
+    )
+
+def download_BaSTI_isochrones(
+        output_dir,
+        use_log_age=False,
+        age_min,age_max,age_step,
+        met_min,met_max,met_step,
+        alpha="P00",
+        grid="P00O1D1E1Y247",
+        phot_system="GAIA-DR3"):
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+
+    ages = generate_grid(age_min, age_max, age_step)
+    metallicities = generate_grid(met_min, met_max, met_step)
     
-    files = glob.glob(str(output_path) + '/*')
+    files = glob.glob(str(output_path) + '/*.isc*')
     for f in files:
         if os.path.isdir(f):
             continue

@@ -15,16 +15,158 @@ express our deepest gratitude for her guidance, and our commitment to
 carry forward her legacy.</b></p><ul><li> <u>NEW!</u> (15oct25) Isochrones derive from PARSEC v2.0 tracks were further revised and extended, according to <a href="https://ui.adsabs.harvard.edu/abs/2025A%26A...701A.258N/abstract">Nguyen et al. (2025)</a>.</li><li>
  (01oct24) Isochrones derive from PARSEC v2.0 tracks were significantly 
 revised: they span a wider range of masses and metallicities, and now 
-they can be interpolated in &#969;<sub>i</sub>. There is some information about them on the <a href="https://stev.oapd.inaf.it/cmd_3.9/help.html" target="aside">Help</a> page.</li><li> (11nov22) Removed a small artefact at Mini=0.45 Msun, in the PARSEC v2.0 tracks.</li><li> (19oct22) When computing LFs, the first magnitude bin was overestimating the star counts. Accuracy was improved.</li><li> (19jul22) First version of isochrones with rotation (PARSEC v2.0). We are still expanding their features.</li><li> (23nov21) Added DP0 version of LSST filters.</li></ul><p></p></fieldset><form method="post" action="./cmd_3.9" enctype="multipart/form-data"><p></p><div align="center"><hr><font size="+1"><a href="https://stev.oapd.inaf.it/cmd_3.9/help.html" target="aside">Help</a> <a href="https://stev.oapd.inaf.it/cmd_3.9/faq.html" target="aside">FAQ</a> </font><p><font size="+1"><input type="submit" name="submit_form" value="Submit"> <input type="submit" name="reset_form" value="Reset"></font></p><hr><input type="hidden" name="cmd_version" value="3.9"><p class="errorwarning"></p><fieldset title="Select the set of evolutionary tracks"><legend title="Evolutionary tracks">Evolutionary tracks</legend><b>PARSEC</b> tracks (<a href="http://adsabs.harvard.edu/abs/2012MNRAS.427..127B">Bressan et al. (2012)</a>) are computed for a scaled-solar composition and following the <i>Y</i>=0.2485+1.78<i>Z</i> relation. The present solar metal content is <i>Z</i>&#9737;=0.0152. <a href="http://stev.oapd.inaf.it/PARSEC/">Tables of evolutionary tracks</a> are also available. <b>COLIBRI</b> tracks (<a href="http://adsabs.harvard.edu/abs/2013MNRAS.434..488M">Marigo et al. (2013)</a>) extend their evolution to the end of the TP-AGB phase, for several choices of mass loss and dredge up parameters. <br><table border="" valign="CENTER" width="95%"><caption><font size="+1">Available sets of tracks:</font></caption> <tbody><tr align="LEFT" valign="TOP"><th width="50%">PARSEC</th> <th width="50%">COLIBRI</th></tr> <tr align="LEFT" valign="TOP"><td>going from the PMS to either the 1st TP, or C-ignition:</td> <td>add the TP-AGB evolution, from the 1st TP to the total loss of envelope:</td></tr> <tr align="LEFT" valign="TOP"><td><input type="radio" name="track_parsec" value="parsec_CAF09_v2.0"><b>PARSEC version 2.0</b><br> Available for 0.0001&#8804;<i>Z</i>&#8804;0.03 (-2.19&#8804;[M/H]&#8804;+0.34), with rotation turned off for the lowest masses. The 0.004&#8804;<i>Z</i>&#8804;0.017 tracks are described in <a href="https://ui.adsabs.harvard.edu/abs/2022A%26A...665A.126N/abstract">Nguyen et al. (2022)</a>; the others are from <a href="https://ui.adsabs.harvard.edu/abs/2025A%26A...701A.258N/abstract">Nguyen et al. (2025)</a>.<br><li>with <b>&#969;<sub>i</sub>=</b> <input type="text" name="track_omegai" value="0.00" size="6"> (in the range 0&#8804;&#969;<sub>i</sub>&#8804;0.99).<br>
+they can be interpolated in &#969;<sub>i</sub>. There is some information about them on the <a
+    href="https://stev.oapd.inaf.it/cmd_3.9/help.html" target="aside">Help</a> page.</li>
+<li> (11nov22) Removed a small artefact at Mini=0.45 Msun, in the PARSEC v2.0 tracks.</li>
+<li> (19oct22) When computing LFs, the first magnitude bin was overestimating the star counts. Accuracy was improved.
+</li>
+<li> (19jul22) First version of isochrones with rotation (PARSEC v2.0). We are still expanding their features.</li>
+<li> (23nov21) Added DP0 version of LSST filters.</li>
+</ul>
+<p></p>
+</fieldset>
+<form method="post" action="./cmd_3.9" enctype="multipart/form-data">
+    <p></p>
+    <div align="center">
+        <hr>
+        <font size="+1"><a href="https://stev.oapd.inaf.it/cmd_3.9/help.html" target="aside">Help</a> <a
+                href="https://stev.oapd.inaf.it/cmd_3.9/faq.html" target="aside">FAQ</a> </font>
+        <p>
+            <font size="+1"><input type="submit" name="submit_form" value="Submit"> <input type="submit"
+                    name="reset_form" value="Reset"></font>
+        </p>
+        <hr><input type="hidden" name="cmd_version" value="3.9">
+        <p class="errorwarning"></p>
+        <fieldset title="Select the set of evolutionary tracks">
+            <legend title="Evolutionary tracks">Evolutionary tracks</legend><b>PARSEC</b> tracks (<a
+                href="http://adsabs.harvard.edu/abs/2012MNRAS.427..127B">Bressan et al. (2012)</a>) are computed for a
+            scaled-solar composition and following the <i>Y</i>=0.2485+1.78<i>Z</i> relation. The present solar metal
+            content is <i>Z</i>&#9737;=0.0152. <a href="http://stev.oapd.inaf.it/PARSEC/">Tables of evolutionary
+                tracks</a> are also available. <b>COLIBRI</b> tracks (<a
+                href="http://adsabs.harvard.edu/abs/2013MNRAS.434..488M">Marigo et al. (2013)</a>) extend their
+            evolution to the end of the TP-AGB phase, for several choices of mass loss and dredge up parameters. <br>
+            <table border="" valign="CENTER" width="95%">
+                <caption>
+                    <font size="+1">Available sets of tracks:</font>
+                </caption>
+                <tbody>
+                    <tr align="LEFT" valign="TOP">
+                        <th width="50%">PARSEC</th>
+                        <th width="50%">COLIBRI</th>
+                    </tr>
+                    <tr align="LEFT" valign="TOP">
+                        <td>going from the PMS to either the 1st TP, or C-ignition:</td>
+                        <td>add the TP-AGB evolution, from the 1st TP to the total loss of envelope:</td>
+                    </tr>
+                    <tr align="LEFT" valign="TOP">
+                        <td><input type="radio" name="track_parsec" value="parsec_CAF09_v2.0" checked="checked"><b>PARSEC version
+                                2.0</b><br> Available for 0.0001&#8804;<i>Z</i>&#8804;0.03
+                            (-2.19&#8804;[M/H]&#8804;+0.34), with rotation turned off for the lowest masses. The
+                            0.004&#8804;<i>Z</i>&#8804;0.017 tracks are described in <a
+                                href="https://ui.adsabs.harvard.edu/abs/2022A%26A...665A.126N/abstract">Nguyen et al.
+                                (2022)</a>; the others are from <a
+                                href="https://ui.adsabs.harvard.edu/abs/2025A%26A...701A.258N/abstract">Nguyen et al.
+                                (2025)</a>.<br>
+                            <li>with <b>&#969;<sub>i</sub>=</b> <input type="text" name="track_omegai" value="0.00"
+                                    size="6"> (in the range 0&#8804;&#969;<sub>i</sub>&#8804;0.99).<br>
  Notes: this choice will (1) turn off features like the star-by-star 
 extinction, the Reimers-resettable mass loss, etc. and (2) change the 
-output format (see  <a href="https://stev.oapd.inaf.it/%22../$%7Bcginame%7D_$version/help.html/%22" target="\&quot;aside\&quot;">Help</a>).</li></td> <td>Not available</td></tr> <tr align="LEFT" valign="TOP"><td rowspan="6" valign="CENTER"><input type="radio" name="track_parsec" value="parsec_CAF09_v1.2S" checked="checked"><b>PARSEC version 1.2S</b><br> Available for 0.0001&#8804;<i>Z</i>&#8804;0.06 (-2.2&#8804;[M/H]&#8804;+0.5); for 0.0001&#8804;<i>Z</i>&#8804;0.02 the mass range is 0.1&#8804;<i>M/M</i>&#9737;&lt;350; for 0.03&#8804;<i>Z</i>&#8804;0.04 0.1&#8804;<i>M/M</i>&#9737;&lt;150, and for <i>Z</i>=0.06 0.1&#8804;<i>M/M</i>&#9737;&lt;20 (cf. <a href="http://adsabs.harvard.edu/abs/2014MNRAS.445.4287T">Tang et al. (2014)</a> for 0.001&#8804;<i>Z</i>&#8804;0.004, and <a href="http://adsabs.harvard.edu/abs/2015MNRAS.452.1068C">Chen et al. (2015)</a> for other <i>Z</i>). With revised and calibrated surface boundary conditions in low-mass dwarfs (<a href="http://adsabs.harvard.edu/abs/2014MNRAS.444.2525C">Chen et al. (2014)</a>).</td></tr> <tr align="LEFT" valign="TOP"><td><input type="radio" name="track_colibri" value="parsec_CAF09_v1.2S_S_LMC_08_web" checked="checked"> + COLIBRI S_37 (<a href="https://ui.adsabs.harvard.edu/abs/2020MNRAS.498.3283P">Pastorelli et al. (2020)</a>) for 0.008&#8804;<i>Z</i>&#8804;0.02, + COLIBRI S_35 (<a href="http://adsabs.harvard.edu/abs/2019MNRAS.485.5666P">Pastorelli et al. (2019)</a>) for 0.0005&#8804;<i>Z</i>&#8804;0.006 + COLIBRI PR16 (<a href="http://adsabs.harvard.edu/abs/2013MNRAS.434..488M">Marigo et al. (2013)</a>, <a href="http://adsabs.harvard.edu/abs/2016ApJ...822...73R">Rosenfield et al. (2016)</a>) for <i>Z</i>&#8804;0.0002 and <i>Z</i>&#8805;0.03 )</td></tr> <tr align="LEFT" valign="TOP"><td><input type="radio" name="track_colibri" value="parsec_CAF09_v1.2S_S35"> + COLIBRI S_35 (<a href="http://adsabs.harvard.edu/abs/2019MNRAS.485.5666P">Pastorelli et al. (2019)</a>) <font size="-1">(limited to 0.0005&#8804;<i>Z</i>&#8804;0.03) </font></td></tr> <tr align="LEFT" valign="TOP"><td><input type="radio" name="track_colibri" value="parsec_CAF09_v1.2S_S07"> + COLIBRI S_07 (<a href="http://adsabs.harvard.edu/abs/2019MNRAS.485.5666P">Pastorelli et al. (2019)</a>) <font size="-1">(limited to 0.0005&#8804;<i>Z</i>&#8804;0.03) </font></td></tr> <tr align="LEFT" valign="TOP"><td><input type="radio" name="track_colibri" value="parsec_CAF09_v1.2S_NOV13"> + COLIBRI PR16 (<a href="http://adsabs.harvard.edu/abs/2013MNRAS.434..488M">Marigo et al. (2013)</a> and <a href="http://adsabs.harvard.edu/abs/2016ApJ...822...73R">Rosenfield et al. (2016)</a>) <font size="-1">(limited to 0.0001&#8804;<i>Z</i>&#8804;0.06)</font></td></tr> <tr align="LEFT" valign="TOP"><td><input type="radio" name="track_colibri" value="no">No <font size="-1"> <font size="-1">(no limitation in <i>Z</i>)</font></font></td></tr> <tr align="LEFT" valign="TOP"><td><input type="radio" name="track_parsec" value="parsec_CAF09_v1.1"><b>PARSEC version 1.1</b><br> <font size="-1">Available for 0.0001&#8804;<i>Z</i>&#8804;0.06 (-2.2&#8804;[M/H]&#8804;+0.5), in the range 0.1&#8804;<i>M/M</i>&#9737;&lt;12. With revised diffusion+overshooting in low-mass stars, and improvements in interpolation scheme.</font></td> <td>Not available</td></tr> <tr align="LEFT" valign="TOP"><td><input type="radio" name="track_parsec" value="parsec_CAF09_v1.0"><b>PARSEC version 1.0</b><br> <font size="-1">Available for 0.0005&#8804;<i>Z</i>&#8804;0.07 (-1.5&#8804;[M/H]&#8804;+0.6), in the range 0.1&#8804;<i>M/M</i>&#9737;&lt;12.</font></td> <td>Not available</td></tr> <tr align="LEFT" valign="TOP"><td colspan="3" halign="CENTER">Add post-AGB and WD evolution? <input type="radio" name="track_postagb" value="no" checked="checked">Not yet (it's in preparation)</td></tr></tbody></table>You can also specify: <ul><li>the resolution of the thermal pulse cycles in the COLIBRI section: n<sub>inTPC</sub>= <input type="text" name="n_inTPC" value="10" size="6"> as detailed in <a href="http://adsabs.harvard.edu/abs/2017ApJ...835...77M">Marigo et al. (2017)</a> </li><li>mass-loss on the RGB using the Reimers formula with <font size="+1">&#951;</font><sub>Reimers</sub>= <input type="text" name="eta_reimers" value="0.2" size="6"></li></ul><p class="smallwarning">Warning: mass loss works fine as long as <font size="+1">&#951;</font><sub>Reimers</sub>&lt;0.5.  Check the results for higher values. Reimers is not applied for PARSEC v2.0 tracks (see papers)!</p><hr>Previous sets of tracks, described on <a href="http://adsabs.harvard.edu/abs/2010ApJ...724.1030G">Girardi et al. (2010)</a>, <a href="http://adsabs.harvard.edu/abs/2008A%26A...482..883M">Marigo et al. (2008)</a>, <a href="http://adsabs.harvard.edu/abs/2000A%26AS..141..371G">Girardi et al. (2000)</a>, and <a href="http://adsabs.harvard.edu/abs/1994A%26AS..106..275B">Bertelli et al. (1994)</a>, are no longer included in the CMD web interface v3.2+. They can be retrieved with previous versions (for instance, try <a href="http://stev.oapd.inaf.it/cgi-bin/cmd_3.1">CMD v3.1</a>)<input type="hidden" name="kind_interp" value="1"><input type="hidden" name="kind_postagb" value="-1"></fieldset><fieldset title="Select the photometric system"><legend title="Photometric system">Photometric system</legend><p>Choose among the available photometric systems: <select name="photsys_file">
+output format (see <a href="https://stev.oapd.inaf.it/%22../$%7Bcginame%7D_$version/help.html/%22"
+    target="\&quot;aside\&quot;">Help</a>).</li>
+</td>
+<td>Not available</td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td rowspan="6" valign="CENTER"><input type="radio" name="track_parsec" value="parsec_CAF09_v1.2S"><b>PARSEC version
+            1.2S</b><br> Available for 0.0001&#8804;<i>Z</i>&#8804;0.06 (-2.2&#8804;[M/H]&#8804;+0.5); for
+        0.0001&#8804;<i>Z</i>&#8804;0.02 the mass range is 0.1&#8804;<i>M/M</i>&#9737;&lt;350; for
+        0.03&#8804;<i>Z</i>&#8804;0.04 0.1&#8804;<i>M/M</i>&#9737;&lt;150, and for <i>Z</i>=0.06
+        0.1&#8804;<i>M/M</i>&#9737;&lt;20 (cf. <a href="http://adsabs.harvard.edu/abs/2014MNRAS.445.4287T">Tang et al.
+            (2014)</a> for 0.001&#8804;<i>Z</i>&#8804;0.004, and <a
+            href="http://adsabs.harvard.edu/abs/2015MNRAS.452.1068C">Chen et al. (2015)</a> for other <i>Z</i>). With
+        revised and calibrated surface boundary conditions in low-mass dwarfs (<a
+            href="http://adsabs.harvard.edu/abs/2014MNRAS.444.2525C">Chen et al. (2014)</a>).</td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td><input type="radio" name="track_colibri" value="parsec_CAF09_v1.2S_S_LMC_08_web" checked="checked"> + COLIBRI
+        S_37 (<a href="https://ui.adsabs.harvard.edu/abs/2020MNRAS.498.3283P">Pastorelli et al. (2020)</a>) for
+        0.008&#8804;<i>Z</i>&#8804;0.02, + COLIBRI S_35 (<a
+            href="http://adsabs.harvard.edu/abs/2019MNRAS.485.5666P">Pastorelli et al. (2019)</a>) for
+        0.0005&#8804;<i>Z</i>&#8804;0.006 + COLIBRI PR16 (<a
+            href="http://adsabs.harvard.edu/abs/2013MNRAS.434..488M">Marigo et al. (2013)</a>, <a
+            href="http://adsabs.harvard.edu/abs/2016ApJ...822...73R">Rosenfield et al. (2016)</a>) for
+        <i>Z</i>&#8804;0.0002 and <i>Z</i>&#8805;0.03 )</td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td><input type="radio" name="track_colibri" value="parsec_CAF09_v1.2S_S35"> + COLIBRI S_35 (<a
+            href="http://adsabs.harvard.edu/abs/2019MNRAS.485.5666P">Pastorelli et al. (2019)</a>) <font size="-1">
+            (limited to 0.0005&#8804;<i>Z</i>&#8804;0.03) </font>
+    </td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td><input type="radio" name="track_colibri" value="parsec_CAF09_v1.2S_S07"> + COLIBRI S_07 (<a
+            href="http://adsabs.harvard.edu/abs/2019MNRAS.485.5666P">Pastorelli et al. (2019)</a>) <font size="-1">
+            (limited to 0.0005&#8804;<i>Z</i>&#8804;0.03) </font>
+    </td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td><input type="radio" name="track_colibri" value="parsec_CAF09_v1.2S_NOV13"> + COLIBRI PR16 (<a
+            href="http://adsabs.harvard.edu/abs/2013MNRAS.434..488M">Marigo et al. (2013)</a> and <a
+            href="http://adsabs.harvard.edu/abs/2016ApJ...822...73R">Rosenfield et al. (2016)</a>) <font size="-1">
+            (limited to 0.0001&#8804;<i>Z</i>&#8804;0.06)</font>
+    </td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td><input type="radio" name="track_colibri" value="no">No <font size="-1">
+            <font size="-1">(no limitation in <i>Z</i>)</font>
+        </font>
+    </td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td><input type="radio" name="track_parsec" value="parsec_CAF09_v1.1"><b>PARSEC version 1.1</b><br>
+        <font size="-1">Available for 0.0001&#8804;<i>Z</i>&#8804;0.06 (-2.2&#8804;[M/H]&#8804;+0.5), in the range
+            0.1&#8804;<i>M/M</i>&#9737;&lt;12. With revised diffusion+overshooting in low-mass stars, and improvements
+            in interpolation scheme.</font>
+    </td>
+    <td>Not available</td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td><input type="radio" name="track_parsec" value="parsec_CAF09_v1.0"><b>PARSEC version 1.0</b><br>
+        <font size="-1">Available for 0.0005&#8804;<i>Z</i>&#8804;0.07 (-1.5&#8804;[M/H]&#8804;+0.6), in the range
+            0.1&#8804;<i>M/M</i>&#9737;&lt;12.</font>
+    </td>
+    <td>Not available</td>
+</tr>
+<tr align="LEFT" valign="TOP">
+    <td colspan="3" halign="CENTER">Add post-AGB and WD evolution? <input type="radio" name="track_postagb" value="no"
+            checked="checked">Not yet (it's in preparation)</td>
+</tr>
+</tbody>
+</table>You can also specify: <ul>
+    <li>the resolution of the thermal pulse cycles in the COLIBRI section: n<sub>inTPC</sub>= <input type="text"
+            name="n_inTPC" value="10" size="6"> as detailed in <a
+            href="http://adsabs.harvard.edu/abs/2017ApJ...835...77M">Marigo et al. (2017)</a> </li>
+    <li>mass-loss on the RGB using the Reimers formula with <font size="+1">&#951;</font><sub>Reimers</sub>= <input
+            type="text" name="eta_reimers" value="0.2" size="6"></li>
+</ul>
+<p class="smallwarning">Warning: mass loss works fine as long as <font size="+1">&#951;</font><sub>Reimers</sub>&lt;0.5.
+    Check the results for higher values. Reimers is not applied for PARSEC v2.0 tracks (see papers)!</p>
+<hr>Previous sets of tracks, described on <a href="http://adsabs.harvard.edu/abs/2010ApJ...724.1030G">Girardi et al.
+    (2010)</a>, <a href="http://adsabs.harvard.edu/abs/2008A%26A...482..883M">Marigo et al. (2008)</a>, <a
+    href="http://adsabs.harvard.edu/abs/2000A%26AS..141..371G">Girardi et al. (2000)</a>, and <a
+    href="http://adsabs.harvard.edu/abs/1994A%26AS..106..275B">Bertelli et al. (1994)</a>, are no longer included in the
+CMD web interface v3.2+. They can be retrieved with previous versions (for instance, try <a
+    href="http://stev.oapd.inaf.it/cgi-bin/cmd_3.1">CMD v3.1</a>)<input type="hidden" name="kind_interp"
+    value="1"><input type="hidden" name="kind_postagb" value="-1"></fieldset>
+<fieldset title="Select the photometric system">
+    <legend title="Photometric system">Photometric system</legend>
+    <p>Choose among the available photometric systems: <select name="photsys_file">
 <option value="tab_mag_odfnew/tab_mag_.dat"></option>
 <option value="YBC_tab_mag_odfnew/tab_mag_2mass_spitzer.dat"> 2MASS + Spitzer (IRAC+MIPS)</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_2mass_spitzer_wise.dat"> 2MASS + Spitzer (IRAC+MIPS) + WISE</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_2mass.dat"> 2MASS JHKs</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_ogle_2mass_spitzer.dat"> OGLE + 2MASS + Spitzer (IRAC+MIPS)</option>
-<option selected="selected" value="YBC_tab_mag_odfnew/tab_mag_ubvrijhk.dat">UBVRIJHK (cf. Maiz-Apellaniz 2006 + Bessell 1990)</option>
+<option value="YBC_tab_mag_odfnew/tab_mag_ubvrijhk.dat">UBVRIJHK (cf. Maiz-Apellaniz 2006 + Bessell 1990)</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_bessell.dat">UBVRIJHKLMN (cf. Bessell 1990 + Bessell &amp; Brett 1988)</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_akari.dat">AKARI</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_batc.dat">BATC</option>
@@ -49,7 +191,7 @@ output format (see  <a href="https://stev.oapd.inaf.it/%22../$%7Bcginame%7D_$ver
 <option value="YBC_tab_mag_odfnew/tab_mag_gaia_tycho2_2mass.dat">Gaia DR1 + Tycho2 + 2MASS (all Vegamags)</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_gaiaDR2_tycho2_2mass.dat">Gaia DR2 + Tycho2 + 2MASS (all Vegamags, Gaia passbands from Evans et al. 2018)</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_gaiaDR2weiler_tycho2_2mass.dat">Gaia DR2 + Tycho2 + 2MASS (all Vegamags, Gaia passbands from Weiler 2018)</option>
-<option value="YBC_tab_mag_odfnew/tab_mag_gaiaEDR3.dat">Gaia EDR3 (all Vegamags, Gaia passbands from ESA/Gaia website)</option>
+<option selected="selected" value="YBC_tab_mag_odfnew/tab_mag_gaiaEDR3.dat">Gaia EDR3 (all Vegamags, Gaia passbands from ESA/Gaia website)</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_gaia.dat">Gaia's DR1 G, G_BP and G_RP (Vegamags)</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_gaiaDR2.dat">Gaia's DR2 G, G_BP and G_RP (Vegamags, Gaia passbands from Evans et al. 2018)</option>
 <option value="YBC_tab_mag_odfnew/tab_mag_gaiaDR2maiz.dat">Gaia's DR2 G, G_BP and G_RP (Vegamags, Gaia passbands from Maiz-Apellaniz and Weiler 2018)</option>

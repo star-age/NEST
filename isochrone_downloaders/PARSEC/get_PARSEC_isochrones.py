@@ -45,7 +45,6 @@ class IsocolonyRequest:
     met_max: float
     n_mets: int
     use_log_age: bool
-    use_Z: bool
 
     @property
     def n_isochrones(self) -> int:
@@ -65,7 +64,6 @@ class DownloadedFile:
     n_mets: int
     n_isochrones: int
     use_log_age: bool
-    use_Z: bool
     timestamp: str
 
 
@@ -226,7 +224,7 @@ def calculate_grid_count(min_val: float, max_val: float, step: float) -> int:
 
 def partition_grid(age_min: float, age_max: float, age_step: float,
                    met_min: float, met_max: float, met_step: float,
-                   use_log_age: bool, use_Z: bool) -> List[IsocolonyRequest]:
+                   use_log_age: bool) -> List[IsocolonyRequest]:
     """
     Partition the age-metallicity grid into requests of ≤400 isochrones.
     
@@ -252,8 +250,7 @@ def partition_grid(age_min: float, age_max: float, age_step: float,
             met_min=met_min,
             met_max=met_max,
             n_mets=n_mets,
-            use_log_age=use_log_age,
-            use_Z=use_Z
+            use_log_age=use_log_age
         )]
     
     # Partition by metallicity (age is typically the longer dimension)
@@ -273,8 +270,7 @@ def partition_grid(age_min: float, age_max: float, age_step: float,
                 met_min=met_min,
                 met_max=met_max,
                 n_mets=n_mets,
-                use_log_age=use_log_age,
-                use_Z=use_Z
+                use_log_age=use_log_age
             ))
             age_idx += n_age_chunk
         return requests
@@ -292,8 +288,7 @@ def partition_grid(age_min: float, age_max: float, age_step: float,
                 met_min=met_min + met_idx * met_step,
                 met_max=met_chunk_max,
                 n_mets=n_met_chunk,
-                use_log_age=use_log_age,
-                use_Z=use_Z
+                use_log_age=use_log_age
             ))
             met_idx += n_met_chunk
         return requests
@@ -348,18 +343,11 @@ def build_payload(track_parsec: str, track_colibri: str, photsys_file: str,
         payload["isoc_dage"] = str(age_step)
     
     # Metallicity parameters
-    if request.use_Z:
-        payload["isoc_ismetlog"] = "0"
-        payload["isoc_zlow"] = str(request.met_min)
-        payload["isoc_zupp"] = str(request.met_max)
-        met_step = (request.met_max - request.met_min) / (request.n_mets - 1) if request.n_mets > 1 else 0
-        payload["isoc_dz"] = str(met_step)
-    else:
-        payload["isoc_ismetlog"] = "1"
-        payload["isoc_metlow"] = str(request.met_min)
-        payload["isoc_metupp"] = str(request.met_max)
-        met_step = (request.met_max - request.met_min) / (request.n_mets - 1) if request.n_mets > 1 else 0
-        payload["isoc_dmet"] = str(met_step)
+    payload["isoc_ismetlog"] = "1"
+    payload["isoc_metlow"] = str(request.met_min)
+    payload["isoc_metupp"] = str(request.met_max)
+    met_step = (request.met_max - request.met_min) / (request.n_mets - 1) if request.n_mets > 1 else 0
+    payload["isoc_dmet"] = str(met_step)
     
     return payload
 
@@ -456,9 +444,6 @@ def main():
     # Grid Mode Selection
     # ========================================================
     
-    print("\n" + "=" * 70)
-    print("Grid Mode")
-    print("=" * 70)
     grid_modes = [
         ("Single isochrone", "single"),
         ("Age grid", "age"),
@@ -501,45 +486,21 @@ def main():
         age_step = 0
     
     print("\nMetallicity selection")
-    metal_mode = input("Use Z metallicity? [Y/n]: ").strip().lower()
-    use_Z = metal_mode != "n"
-    
+
     if grid_mode in ["single", "metallicity", "age_metallicity"]:
         if grid_mode == "single":
-            if use_Z:
-                met_min = float(input("Z = "))
-                met_max = met_min
-                met_step = 0
-            else:
-                met_min = float(input("[M/H] = "))
-                met_max = met_min
-                met_step = 0
-        else:  # metallicity or age_metallicity
-            if use_Z:
-                met_min = float(input("Z min: "))
-                met_max = float(input("Z max: "))
-                met_step = float(input("Z step: "))
-            else:
-                met_min = float(input("[M/H] min: "))
-                met_max = float(input("[M/H] max: "))
-                met_step = float(input("[M/H] step: "))
+            met_min = float(input("[M/H] = "))
+            met_max = met_min
+            met_step = 0
+        else:
+            met_min = float(input("[M/H] min: "))
+            met_max = float(input("[M/H] max: "))
+            met_step = float(input("[M/H] step: "))
     else:
         met_min = 0
         met_max = 0
         met_step = 0
     
-    # ========================================================
-    # Generate Requests
-    # ========================================================
-    
-    requests_list = partition_grid(
-        age_min, age_max, age_step,
-        met_min, met_max, met_step,
-        use_log_age, use_Z
-    )
-    print(requests_list)
-    print(f"\nPartitioned into {len(requests_list)} request(s)")
-
     # ========================================================
     # Output Directory
     # ========================================================
@@ -552,10 +513,29 @@ def main():
     output_path.mkdir(parents=True, exist_ok=True)
     print(f"Output directory: {output_path.resolve()}")
     
-    # ========================================================
-    # Execute Requests
-    # ========================================================
-    
+    download_PARSEC_isochrones(
+        output_dir,
+        use_log_age,age_min,age_max,age_step,
+        met_min,met_max,met_step,
+        track_parsec,track_colibri,
+        photsys_file,photsys_version,
+        imf_file,extinction_av
+    )
+
+def download_PARSEC_isochrones(
+        output_dir,
+        use_log_age,age_min,age_max,age_step,
+        met_min,met_max,met_step,
+        track_parsec,track_colibri,
+        photsys_file,photsys_version,
+        imf_file,extinction_av
+    ):
+    requests_list = partition_grid(
+        age_min, age_max, age_step,
+        met_min, met_max, met_step,
+        use_log_age
+    )
+
     session = requests.Session()
     downloaded_files: List[DownloadedFile] = []
     total_isochrones = sum(r.n_isochrones for r in requests_list)
@@ -589,13 +569,12 @@ def main():
         # Build meaningful filename
         age_label = f"logAge{request.age_min:.2f}to{request.age_max:.2f}" if request.use_log_age \
             else f"Age{request.age_min:.2e}to{request.age_max:.2e}"
-        met_label = f"Z{request.met_min:.4f}to{request.met_max:.4f}" if request.use_Z \
-            else f"MH{request.met_min:.2f}to{request.met_max:.2f}"
+        met_label = f"MH{request.met_min:.2f}to{request.met_max:.2f}"
         
         # Determine file extension
         file_ext = ".dat.gz" if download_link.endswith(".gz") else ".dat"
         output_filename = f"isochrones_{age_label}_{met_label}{file_ext}"
-        output_file = output_path / output_filename
+        output_file = output_path + "/" + output_filename
         
         # Download file
         full_url = urljoin(CMD_SUBMIT_URL, download_link)
@@ -612,52 +591,9 @@ def main():
             n_mets=request.n_mets,
             n_isochrones=request.n_isochrones,
             use_log_age=request.use_log_age,
-            use_Z=request.use_Z,
             timestamp=datetime.now().isoformat()
         ))
     
-    # ========================================================
-    # Write Manifest and Config
-    # ========================================================
-    
-    manifest = {
-        "timestamp": datetime.now().isoformat(),
-        "total_files": len(downloaded_files),
-        "total_isochrones": total_isochrones,
-        "files": [asdict(f) for f in downloaded_files]
-    }
-    
-    manifest_file = output_path / "manifest.json"
-    with open(manifest_file, "w") as f:
-        json.dump(manifest, f, indent=2)
-    print(f"\nManifest saved: {manifest_file}")
-    
-    config = RunConfiguration(
-        timestamp=datetime.now().isoformat(),
-        track_parsec=track_parsec,
-        track_colibri=track_colibri,
-        photsys_file=photsys_file,
-        photsys_version=photsys_version,
-        imf_file=imf_file,
-        extinction_av=extinction_av,
-        output_directory=str(output_path.resolve()),
-        total_requests=len(requests_list),
-        total_isochrones=total_isochrones,
-        grid_mode=grid_mode
-    )
-    
-    config_file = output_path / "run_config.json"
-    with open(config_file, "w") as f:
-        json.dump(asdict(config), f, indent=2)
-    print(f"Configuration saved: {config_file}")
-    
-    print(f"\n{'='*70}")
-    print("Download complete!")
-    print(f"{'='*70}")
-    print(f"Output directory: {output_path.resolve()}")
-    print(f"Total files downloaded: {len(downloaded_files)}")
-    print(f"Total isochrones: {total_isochrones}")
-
     files = glob.glob(str(output_path) + '/*.gz')
 
     for file in files:
