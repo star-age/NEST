@@ -291,6 +291,7 @@ class AgeModel:
         self.use_sklearn = use_sklearn and _has_sklearn
         self.use_tqdm = use_tqdm and _has_tqdm
         self.verbose = verbose
+        self.isochrone_set = None
         if photometric_type == None:
             photometric_type = 'Gaia'
         self.photometric_type = photometric_type
@@ -338,6 +339,9 @@ class AgeModel:
             _str += ', HST photometry: mag=F814W, col=(F606W-F814W).'
         return _str
     
+    def set_isochrone_set(self, filename):
+        self.isochrone_set = json.load(open(filename, 'r'))
+
     def load_mlp_and_scaler(self, filename):
         """
         Load a pretrained neural network and its associated scaler as scikit-learn objects.
@@ -1011,20 +1015,17 @@ class AgeModel:
                 ax.set_ylabel(r'$F814W$ [mag]', fontsize=axis_fontsize)
             ax.tick_params(labelsize=axis_fontsize,axis='both')
 
-        if isochrone_set == None:
-            isochrones = get_isochrones(self)
+        if isochrone_set is None:
+            if self.isochrone_set is not None:
+                isochrones = self.isochrone_set
+            else:
+                isochrones = get_isochrones(self)
         else:
             isochrones = json.load(open(isochrone_set, 'r'))
 
         if isochrones is None:
             raise ValueError('Isochrones not available for this model')
-        if type(isochrone_met) is not str:
-            if np.issubdtype(type(isochrone_met), np.number) is False:
-                raise ValueError('isochrone_met must be a float or int')
-            isochrone_met = str(round(isochrone_met,2))
-        print(isochrone_met)
         isochrone_met = self.get_closest_metallicity(isochrones,isochrone_met)
-        print(isochrone_met,isochrones.keys())
         isochrones = isochrones[isochrone_met]
         
         lines = []
@@ -1038,6 +1039,7 @@ class AgeModel:
             kwargs['linewidth'] = 0.5
         if 'alpha' not in kwargs:
             kwargs['alpha'] = 0.25
+
         for i,isochrone in enumerate(isochrones):
             iso_age = isochrone['age']
             iso_mag = isochrone['MG']
@@ -1204,29 +1206,27 @@ class AgeModel:
             ax.set_ylim(10,-5)
             plt.tight_layout()
             return fig,ax
+    
+    def get_closest_metallicity(self,isochrones,metallicity=0):
+        available_mets = list(isochrones.keys())
+        if str(metallicity) in available_mets:
+            return str(metallicity)
         
-    def get_closest_metallicity(self,isochrones,metallicity):
-        metallicity = str(metallicity)
-        if metallicity in isochrones.keys():
-            return metallicity
-        if '0' in list(isochrones.keys()):
-            isochrone_met = '0'
-        else:
-            isochrone_met = list(isochrones.keys())[len(isochrones.keys())//2]
+        closest_met = available_mets[np.argmin(np.abs(np.array(available_mets).astype(float)-metallicity))]
+        
         if self.verbose:
-            available_mets = ''
-            for key in isochrones.keys():
-                available_mets += key + ','
-            available_mets = available_mets[:-1]
-            print('Metallicity not available for this model (available metallicities : {}), using [M/H]={} instead'.format(available_mets,isochrone_met))
-        return isochrone_met
+            available_mets_str = ','.join(available_mets)
+            print('Metallicity {} not available for this model (available metallicities : {}), using [M/H]={} instead'.format(metallicity,available_mets_str,closest_met))
+        return str(closest_met)
     
     def get_closest_isochrone(self,age_target,isochrone_met=0,isochrone_set=None):
-        if isochrone_set is None:
+        if self.isochrone_set is not None:
+            isos = self.isochrone_set
+        elif isochrone_set is None:
             isos = get_isochrones(self)
         else:
             isos = json.load(open(isochrone_set, 'r'))
-        self.get_closest_metallicity(isos,isochrone_met)
+        isochrone_met = self.get_closest_metallicity(isos,isochrone_met)
         isos_dic = isos[str(isochrone_met)]
         isos_dic = sorted(isos_dic, key=lambda x: x['age'])
 

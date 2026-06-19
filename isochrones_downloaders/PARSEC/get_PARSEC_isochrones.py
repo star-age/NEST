@@ -36,7 +36,7 @@ MAX_ISOCHRONES_PER_REQUEST = 400
 # ============================================================
 
 @dataclass
-class IsocolonyRequest:
+class IsochroneRequest:
     """Represents a single request to the CMD service."""
     age_min: float
     age_max: float
@@ -89,10 +89,8 @@ class RunConfiguration:
 
 def load_form_from_html_file(html_file: str) -> BeautifulSoup:
     """Load the CMD form from a local HTML file."""
-    print(f"Loading CMD form from {html_file}...")
     with open(html_file, 'r', encoding='utf-8') as f:
         return BeautifulSoup(f.read(), "html.parser")
-
 
 def choose_option(title: str, options: List[Tuple[str, str]], 
                   default_value: Optional[str] = None) -> str:
@@ -219,19 +217,18 @@ def calculate_grid_count(min_val: float, max_val: float, step: float) -> int:
     """
     if step == 0:
         return 1
-    return int(math.floor((max_val - min_val) / step)) + 1
-
+    return int(round((max_val - min_val) / step)) + 1
 
 def partition_grid(age_min: float, age_max: float, age_step: float,
                    met_min: float, met_max: float, met_step: float,
-                   use_log_age: bool) -> List[IsocolonyRequest]:
+                   use_log_age: bool) -> List[IsochroneRequest]:
     """
     Partition the age-metallicity grid into requests of ≤400 isochrones.
     
     Ensures exact spacing is preserved across partitions.
     
     Returns:
-        List of IsocolonyRequest objects
+        List of IsochroneRequest objects
     """
     n_ages = calculate_grid_count(age_min, age_max, age_step)
     n_mets = calculate_grid_count(met_min, met_max, met_step)
@@ -243,7 +240,7 @@ def partition_grid(age_min: float, age_max: float, age_step: float,
     print(f"  Total isochrones: {total}")
     
     if total <= MAX_ISOCHRONES_PER_REQUEST:
-        return [IsocolonyRequest(
+        return [IsochroneRequest(
             age_min=age_min,
             age_max=age_max,
             n_ages=n_ages,
@@ -263,7 +260,7 @@ def partition_grid(age_min: float, age_max: float, age_step: float,
         while age_idx < n_ages:
             n_age_chunk = min(n_age_per_request, n_ages - age_idx)
             age_chunk_max = age_min + (age_idx + n_age_chunk - 1) * age_step
-            requests.append(IsocolonyRequest(
+            requests.append(IsochroneRequest(
                 age_min=age_min + age_idx * age_step,
                 age_max=age_chunk_max,
                 n_ages=n_age_chunk,
@@ -281,7 +278,7 @@ def partition_grid(age_min: float, age_max: float, age_step: float,
         while met_idx < n_mets:
             n_met_chunk = min(n_met_per_request, n_mets - met_idx)
             met_chunk_max = met_min + (met_idx + n_met_chunk - 1) * met_step
-            requests.append(IsocolonyRequest(
+            requests.append(IsochroneRequest(
                 age_min=age_min,
                 age_max=age_max,
                 n_ages=n_ages,
@@ -300,7 +297,7 @@ def partition_grid(age_min: float, age_max: float, age_step: float,
 
 def build_payload(track_parsec: str, track_colibri: str, photsys_file: str,
                   photsys_version: str, imf_file: str, extinction_av: float,
-                  request: IsocolonyRequest) -> Dict[str, str]:
+                  request: IsochroneRequest) -> Dict[str, str]:
     """Build the POST payload for a CMD request."""
     payload = {
         "submit_form": "Submit",
@@ -387,7 +384,7 @@ def download_file(session: requests.Session, download_url: str, output_path: Pat
 # Main Application
 # ============================================================
 
-def main():
+def interactive_isochrones_downloader():
     """Main application entry point."""
 
     # Load HTML form file
@@ -497,8 +494,8 @@ def main():
             met_max = float(input("[M/H] max: "))
             met_step = float(input("[M/H] step: "))
     else:
-        met_min = 0
-        met_max = 0
+        met_min = float(input("[M/H] = "))
+        met_max = met_min
         met_step = 0
     
     # ========================================================
@@ -512,24 +509,41 @@ def main():
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     print(f"Output directory: {output_path.resolve()}")
+
+    print("\n" + "=" * 70)
+    print("Evolutionary phases")
+    print("=" * 70)
+    cut_evolutionary_phases = input("Cut evolutionary phases? [Y/n]") != 'n'
     
-    download_PARSEC_isochrones(
+    download_isochrones(
         output_dir,
         use_log_age,age_min,age_max,age_step,
         met_min,met_max,met_step,
         track_parsec,track_colibri,
         photsys_file,photsys_version,
-        imf_file,extinction_av
+        imf_file,extinction_av,
+        cut_evolutionary_phases
     )
 
-def download_PARSEC_isochrones(
+def download_isochrones(
         output_dir,
         use_log_age,age_min,age_max,age_step,
         met_min,met_max,met_step,
         track_parsec,track_colibri,
         photsys_file,photsys_version,
-        imf_file,extinction_av
+        imf_file,extinction_av,
+        cut_evolutionary_phases=True
     ):
+    files = glob.glob(str(output_dir) + '/*.dat')
+    for f in files:
+        if os.path.isdir(f):
+            continue
+        os.remove(f)
+    if os.path.isdir(str(output_dir) + '/temp'):
+        files = glob.glob(str(output_dir) + '/temp/*')
+        for f in files:
+            os.remove(f)
+    
     requests_list = partition_grid(
         age_min, age_max, age_step,
         met_min, met_max, met_step,
@@ -558,7 +572,7 @@ def download_PARSEC_isochrones(
         download_link = extract_download_link(response_soup)
         if download_link is None:
             # Save response for debugging
-            debug_file = output_path / f"cmd_response_{idx}.html"
+            debug_file = output_dir / f"cmd_response_{idx}.html"
             with open(debug_file, "w", encoding="utf-8") as f:
                 f.write(response_soup.prettify())
             raise RuntimeError(
@@ -574,7 +588,7 @@ def download_PARSEC_isochrones(
         # Determine file extension
         file_ext = ".dat.gz" if download_link.endswith(".gz") else ".dat"
         output_filename = f"isochrones_{age_label}_{met_label}{file_ext}"
-        output_file = output_path + "/" + output_filename
+        output_file = output_dir + "/" + output_filename
         
         # Download file
         full_url = urljoin(CMD_SUBMIT_URL, download_link)
@@ -594,7 +608,7 @@ def download_PARSEC_isochrones(
             timestamp=datetime.now().isoformat()
         ))
     
-    files = glob.glob(str(output_path) + '/*.gz')
+    files = glob.glob(str(output_dir) + '/*.gz')
 
     for file in files:
         with gzip.open(file, "rb") as zip:
@@ -602,9 +616,9 @@ def download_PARSEC_isochrones(
                 shutil.copyfileobj(zip, out)
         os.remove(file)
 
-    merge_isochrones('parsec_all.csv',output_path)
+    merge_isochrones('parsec_all.csv',output_dir,cut_evolutionary_phases)
 
-def merge_isochrones(filename,output_path):
+def merge_isochrones(filename,output_path,cut_evolutionary_phases=True):
     files = glob.glob(str(output_path) + '/*.dat')
         
     df_parsec = pd.DataFrame()
@@ -625,7 +639,8 @@ def merge_isochrones(filename,output_path):
 
         df_parsec = pd.concat([df_parsec,df])
     
-    df_parsec = df_parsec[(df_parsec['label'] > 0) & (df_parsec['label'] < 4)]
+    if cut_evolutionary_phases:
+        df_parsec = df_parsec[(df_parsec['label'] > 0) & (df_parsec['label'] < 4)]
 
     df_parsec['Age'] = 10**df_parsec['logAge']/1e9
     if iso_version == '2.0':
@@ -645,21 +660,21 @@ def merge_isochrones(filename,output_path):
     js_parsec = {}
     for moh in df_parsec['MoH'].unique():
         js_parsec[str(moh)] = []
+        df = df_parsec[df_parsec['MoH'] == moh]
         for age in df_parsec['Age'].unique():
-            df = df_parsec[df_parsec['Age'] == age]
+            dff = df[df['Age'] == age]
             js_iso = {'age':float(age)}
-            js_iso['MG'] = df['G'].values.tolist()
-            js_iso['BP-RP'] = df['BP-RP'].tolist()
-            js_iso['M'] = df['M'].values.tolist()
+            js_iso['MG'] = dff['G'].values.tolist()
+            js_iso['BP-RP'] = dff['BP-RP'].tolist()
+            js_iso['M'] = dff['M'].values.tolist()
             js_parsec[str(moh)].append(js_iso)
 
     with open(str(output_path) + '/' + filename.split('.')[0] + '.json','w') as f:
         f.write(str(js_parsec).replace('\'','"'))
 
 if __name__ == "__main__":
-    output_path = 'CMD_isochrones'
     try:
-        main()
+        interactive_isochrones_downloader()
     except KeyboardInterrupt:
         print("\n\nInterrupted by user.")
         sys.exit(1)

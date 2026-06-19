@@ -10,7 +10,11 @@ Note: BaSTI can only query 150 isochrones per request, so large grids
 are automatically partitioned. Each request returns a tar.gz file which
 is extracted and consolidated.
 """
-
+try:
+    from tqdm import tqdm
+    _has_tqdm = True
+except ImportError:
+    _has_tqdm = False
 import requests
 import urllib3
 import json
@@ -97,7 +101,6 @@ class RunConfiguration:
 
 def load_form_from_html_file(html_file: str) -> BeautifulSoup:
     """Load the BaSTI form from a local HTML file."""
-    print(f"Loading BaSTI form from {html_file}...")
     with open(html_file, 'r', encoding='utf-8') as f:
         return BeautifulSoup(f.read(), "html.parser")
 
@@ -442,7 +445,7 @@ def merge_isochrones(filename,output_path):
 # Main Application
 # ============================================================
 
-def main():
+def interactive_isochrones_downloader():
     """Main application entry point."""
 
     # Load HTML form file
@@ -544,7 +547,7 @@ def main():
         grid,
         phot_system])
 
-    download_BaSTI_isochrones(
+    download_isochrones(
         output_dir,
         use_log_age,
         age_min,age_max,age_step,
@@ -554,14 +557,16 @@ def main():
         phot_system
     )
 
-def download_BaSTI_isochrones(
+def download_isochrones(
         output_dir,
         use_log_age,
         age_min,age_max,age_step,
         met_min,met_max,met_step,
         alpha="P00",
         grid="P00O1D1E1Y247",
-        phot_system="GAIA-DR3"):
+        phot_system="GAIA-DR3",
+        use_tqdm=True
+    ):
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -574,9 +579,7 @@ def download_BaSTI_isochrones(
             continue
         os.remove(f)
     if os.path.isdir(str(output_path) + '/temp'):
-        files = glob.glob(str(output_path) + '/temp/*')
-        for f in files:
-            os.remove(f)
+        shutil.rmtree(str(output_path) + '/temp')
 
     # Create temporary directory for tar.gz extraction
     temp_dir = output_path / "temp"
@@ -596,7 +599,11 @@ def download_BaSTI_isochrones(
     downloaded_files: List[DownloadedFile] = []
     successful_downloads = 0
     
-    for req_idx, request in enumerate(requests_list, 1):
+    loop = enumerate(requests_list,1)
+    if _has_tqdm and use_tqdm and len(requests_list) > 1:
+        loop = tqdm(loop,total=len(requests_list))
+
+    for req_idx, request in loop:
         # Format age range for query parameter
         if len(request.ages) == 1:
             age_range = str(request.ages[0])
@@ -655,7 +662,7 @@ def download_BaSTI_isochrones(
 
 if __name__ == "__main__":
     try:
-        main()
+        interactive_isochrones_downloader()
     except KeyboardInterrupt:
         print("\n\nInterrupted by user.")
         sys.exit(1)
