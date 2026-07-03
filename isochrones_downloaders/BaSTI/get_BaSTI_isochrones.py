@@ -15,29 +15,43 @@ try:
     _has_tqdm = True
 except ImportError:
     _has_tqdm = False
-import requests
-import urllib3
-import json
+try:
+    import requests
+    _has_requests = True
+except ImportError:
+    _has_requests = False
+try:
+    import urllib3
+    _has_urllib3 = True
+except ImportError:
+    _has_urllib3 = False
 import os
 import sys
-import math
 import time
 import tarfile
 import shutil
 from pathlib import Path
-from typing import List, Tuple, Dict, Any, Optional
-from dataclasses import dataclass, asdict
+from typing import List, Tuple, Optional
+from dataclasses import dataclass
 from datetime import datetime
-from urllib.parse import urljoin, urlencode
-from bs4 import BeautifulSoup
-import pandas as pd
+from urllib.parse import urljoin
+try:
+    from bs4 import BeautifulSoup
+    _has_bs4 = True
+except ImportError:
+    _has_bs4 = False
+try:
+    import pandas as pd
+    _has_pandas = True
+except ImportError:
+    _has_pandas = False
 import glob
-import gzip
 import pathlib
 
 cwd = str(pathlib.Path(__file__).parent.resolve())
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+if _has_urllib3:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 BASTI_BASE_URL = "http://basti-iac.oa-abruzzo.inaf.it"
 BASTI_SUBMIT_URL = f"{BASTI_BASE_URL}/cgi-bin/isoc-get.py"
@@ -99,7 +113,19 @@ class RunConfiguration:
 # Helper Functions
 # ============================================================
 
-def load_form_from_html_file(html_file: str) -> BeautifulSoup:
+def modules_missing_error():
+    if not _has_urllib3:
+        return ModuleNotFoundError("This function uses urllib3, which is not installed.")
+    if not _has_bs4:
+        return ModuleNotFoundError("This function uses BeautifulSoup4, which is not installed.")
+    if not _has_pandas:
+        return ModuleNotFoundError("This function uses pandas, which is not installed.")
+    if not _has_requests:
+        return ModuleNotFoundError("This function uses requests, which is not installed.")
+
+def load_form_from_html_file(html_file: str):
+    if _has_urllib3 * _has_bs4 * _has_pandas * _has_requests == 0:
+        raise modules_missing_error()
     """Load the BaSTI form from a local HTML file."""
     with open(html_file, 'r', encoding='utf-8') as f:
         return BeautifulSoup(f.read(), "html.parser")
@@ -220,54 +246,28 @@ def load_isc_file(filename: str) -> List[Tuple[str, str]]:
     return options
 
 
-def partition_requests(ages: List[float], metallicities: List[float],
-                      use_log_age: bool) -> List[IsochroneRequest]:
+def partition_requests(ages: List[float],metallicities: List[float],use_log_age: bool) -> List[IsochroneRequest]:
     """
-    Partition the age-metallicity grid into requests of ≤150 isochrones.
-    
-    Strategy: iterate through metallicities and create age chunks for each.
-    
-    Returns:
-        List of IsochroneRequest objects
+    Partition the age-metallicity grid into requests of at most
+    MAX_ISOCHRONES_PER_REQUEST isochrones.
+
+    The API accepts only a single metallicity per request.
     """
-    total = len(ages) * len(metallicities)
-    
-    if total <= MAX_ISOCHRONES_PER_REQUEST:
-        return [IsochroneRequest(
-            ages=ages,
-            metallicities=metallicities,
-            use_log_age=use_log_age
-        )]
-    
+    if not ages or not metallicities:
+        return []
+
     requests = []
-    
-    # Partition by age chunks within each metallicity
-    ages_per_request = MAX_ISOCHRONES_PER_REQUEST // len(metallicities)
-    
-    if ages_per_request == 0:
-        # More metallicities than max per request; split metallicities instead
-        mets_per_request = MAX_ISOCHRONES_PER_REQUEST // len(ages)
-        if mets_per_request == 0:
-            mets_per_request = 1  # At least one metallicity per request
-        
-        for i in range(0, len(metallicities), mets_per_request):
-            met_chunk = metallicities[i:i+mets_per_request]
-            requests.append(IsochroneRequest(
-                ages=ages,
-                metallicities=met_chunk,
-                use_log_age=use_log_age
-            ))
-    else:
-        # More ages than max per request; split ages for each metallicity
-        for met in metallicities:
-            for i in range(0, len(ages), ages_per_request):
-                age_chunk = ages[i:i+ages_per_request]
-                requests.append(IsochroneRequest(
-                    ages=age_chunk,
+
+    for met in metallicities:
+        for i in range(0, len(ages), MAX_ISOCHRONES_PER_REQUEST):
+            requests.append(
+                IsochroneRequest(
+                    ages=ages[i:i + MAX_ISOCHRONES_PER_REQUEST],
                     metallicities=[met],
-                    use_log_age=use_log_age
-                ))
-    
+                    use_log_age=use_log_age,
+                )
+            )
+
     return requests
 
 
@@ -275,7 +275,7 @@ def partition_requests(ages: List[float], metallicities: List[float],
 # Network Operations
 # ============================================================
 
-def submit_basti_request(session: requests.Session, 
+def submit_basti_request(session, 
                          alpha: str, grid: str, age_range: str, metal: str,
                          phot_system: str,
                          request_num: int, total_requests: int) -> Optional[bytes]:
@@ -309,7 +309,12 @@ def submit_basti_request(session: requests.Session,
         }
         
         # Make GET request with query parameters
-        r = requests.get(BASTI_SUBMIT_URL, params=params, verify=False, timeout=120)
+        url = requests.Request(
+            "GET",
+            BASTI_SUBMIT_URL,
+            params=params,
+        ).prepare().url
+        r = requests.get(BASTI_SUBMIT_URL, params=params, verify=False, timeout=6000)
         r.raise_for_status()
         
         # The response should contain the file data directly or a link
@@ -567,6 +572,8 @@ def download_isochrones(
         phot_system="GAIA-DR3",
         use_tqdm=True
     ):
+    if _has_urllib3 * _has_bs4 * _has_pandas * _has_requests == 0:
+        raise modules_missing_error()
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
@@ -590,6 +597,7 @@ def download_isochrones(
     # ========================================================
     
     requests_list = partition_requests(ages, metallicities, use_log_age)
+
     
     # ========================================================
     # Execute Requests

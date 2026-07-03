@@ -7,25 +7,40 @@ to download stellar isochrones with automatic partitioning for large grids
 and comprehensive configuration logging.
 """
 
-import requests
-import urllib3
-import json
+try:
+    import requests
+    _has_requests = True
+except ImportError:
+    _has_requests = False
+try:
+    import urllib3
+    _has_urllib3 = True
+except ImportError:
+    _has_urllib3 = False
 import os
 import sys
-import math
 from pathlib import Path
-from typing import List, Tuple, Dict, Any, Optional
-from dataclasses import dataclass, asdict
+from typing import List, Tuple, Dict, Optional
+from dataclasses import dataclass
 from datetime import datetime
 from urllib.parse import urljoin
-from bs4 import BeautifulSoup
-import pandas as pd
+try:
+    from bs4 import BeautifulSoup
+    _has_bs4 = True
+except ImportError:
+    _has_bs4 = False
+try:
+    import pandas as pd
+    _has_pandas = True
+except ImportError:
+    _has_pandas = False
 import glob
 import gzip
 import shutil
 import pathlib
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+if _has_urllib3:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 CMD_SUBMIT_URL = "https://stev.oapd.inaf.it/cgi-bin/cmd_3.9"
 MAX_ISOCHRONES_PER_REQUEST = 400
@@ -87,7 +102,19 @@ class RunConfiguration:
 # Helper Functions
 # ============================================================
 
-def load_form_from_html_file(html_file: str) -> BeautifulSoup:
+def modules_missing_error():
+    if not _has_urllib3:
+        return ModuleNotFoundError("This function uses urllib3, which is not installed.")
+    if not _has_bs4:
+        return ModuleNotFoundError("This function uses BeautifulSoup4, which is not installed.")
+    if not _has_pandas:
+        return ModuleNotFoundError("This function uses pandas, which is not installed.")
+    if not _has_requests:
+        return ModuleNotFoundError("This function uses requests, which is not installed.")
+
+def load_form_from_html_file(html_file: str):
+    if _has_urllib3 * _has_bs4 * _has_pandas * _has_requests == 0:
+        raise modules_missing_error()
     """Load the CMD form from a local HTML file."""
     with open(html_file, 'r', encoding='utf-8') as f:
         return BeautifulSoup(f.read(), "html.parser")
@@ -353,7 +380,7 @@ def build_payload(track_parsec: str, track_colibri: str, photsys_file: str,
 # Network Operations
 # ============================================================
 
-def submit_cmd_request(session: requests.Session, payload: Dict[str, str]) -> BeautifulSoup:
+def submit_cmd_request(session, payload: Dict[str, str]):
     """Submit a request to the CMD service and return the response page."""
     print(f"Submitting CMD request...")
     r = session.post(CMD_SUBMIT_URL, data=payload, verify=False, timeout=120)
@@ -361,7 +388,7 @@ def submit_cmd_request(session: requests.Session, payload: Dict[str, str]) -> Be
     return BeautifulSoup(r.text, "html.parser")
 
 
-def extract_download_link(soup: BeautifulSoup) -> Optional[str]:
+def extract_download_link(soup) -> Optional[str]:
     """Extract the download link from the CMD response page."""
     for a in soup.find_all("a", href=True):
         href = a["href"]
@@ -370,7 +397,7 @@ def extract_download_link(soup: BeautifulSoup) -> Optional[str]:
     return None
 
 
-def download_file(session: requests.Session, download_url: str, output_path: Path) -> None:
+def download_file(session, download_url: str, output_path: Path) -> None:
     """Download a file from the given URL."""
     print(f"Downloading: {download_url}")
     r = session.get(download_url, verify=False, timeout=120)
@@ -527,13 +554,20 @@ def interactive_isochrones_downloader():
 
 def download_isochrones(
         output_dir,
-        use_log_age,age_min,age_max,age_step,
+        use_log_age,
+        age_min,age_max,age_step,
         met_min,met_max,met_step,
-        track_parsec,track_colibri,
-        photsys_file,photsys_version,
-        imf_file,extinction_av,
-        cut_evolutionary_phases=True
+        track_parsec="parsec_CAF09_v2.0",
+        track_colibri="parsec_CAF09_v1.2S_S_LMC_08_web",
+        photsys_file="YBC_tab_mag_odfnew/tab_mag_gaiaEDR3.dat",
+        photsys_version="YBCnewVega",
+        imf_file="tab_imf/imf_kroupa_orig.dat",
+        extinction_av=0.0,
+        cut_evolutionary_phases=False
     ):
+
+    if _has_urllib3 * _has_bs4 * _has_pandas * _has_requests == 0:
+        raise modules_missing_error()
     files = glob.glob(str(output_dir) + '/*.dat')
     for f in files:
         if os.path.isdir(f):
