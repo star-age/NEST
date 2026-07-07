@@ -695,7 +695,7 @@ def merge_isochrones(filename,output_path,cut_evolutionary_phases=True):
     for moh in df_parsec['MoH'].unique():
         js_parsec[str(moh)] = []
         df = df_parsec[df_parsec['MoH'] == moh]
-        for age in df_parsec['Age'].unique():
+        for age in df['Age'].unique():
             dff = df[df['Age'] == age]
             js_iso = {'age':float(age)}
             js_iso['MG'] = dff['G'].values.tolist()
