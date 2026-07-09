@@ -1,1 +1,1 @@
-from .get_BaSTI_isochrones import download_isochrones,interactive_isochrones_downloader
+from .get_MIST_isochrones import download_isochrones,interactive_isochrones_downloader

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-MIST Isochrone Downloader
+Dartmouth Isochrone Downloader
 
-A Python CLI application that interfaces with the MIST web service
+A Python CLI application that interfaces with the Dartmouth web service
 to download stellar isochrones with support for multiple metallicities
 and comprehensive configuration logging.
 """
@@ -24,6 +24,7 @@ except ImportError:
 import os
 import sys
 import time
+import numpy as np
 import tarfile
 import shutil
 from pathlib import Path
@@ -42,7 +43,6 @@ try:
 except ImportError:
     _has_pandas = False
 import glob
-import zipfile
 import pathlib
 import warnings
 
@@ -51,9 +51,9 @@ cwd = str(pathlib.Path(__file__).parent.resolve())
 if _has_urllib3:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-MIST_BASE_URL = "https://mist.science"
-MIST_SUBMIT_URL = f"{MIST_BASE_URL}/iso_form.php"
-MAX_ISOCHRONES_PER_REQUEST = 150
+MIST_BASE_URL = "https://rcweb.dartmouth.edu"
+MIST_SUBMIT_URL = f"{MIST_BASE_URL}/stellar/isolf_new.php"
+MAX_ISOCHRONES_PER_REQUEST = 50
 
 # ============================================================
 # Data Classes
@@ -62,27 +62,21 @@ MAX_ISOCHRONES_PER_REQUEST = 150
 @dataclass
 class IsochroneRequest:
     """Represents a batch request to MIST."""
-    age_min: float
-    age_max: float
-    age_step: float
+    ages: List[float]
     metallicities: List[float]
-    use_log_age: bool
 
     @property
     def n_isochrones(self) -> int:
         """Total number of isochrones in this request."""
-        return int((self.age_max-self.age_min)/self.age_step) * len(self.metallicities)
+        return len(self.ages) * len(self.metallicities)
 
 
 @dataclass
 class DownloadedFile:
     """Information about a downloaded isochrone file."""
     filename: str
-    age_min: float
-    age_max: float
-    age_step: float
+    ages: List[float]
     metallicities: List[float]
-    use_log_age: bool
     n_isochrones: int
     timestamp: str
 
@@ -263,10 +257,10 @@ def partition_requests(ages: List[float],metallicities: List[float],use_log_age:
 # ============================================================
 
 def submit_mist_request(session, 
-                         alpha: str, version: str,
-                         logage: str, minage: float, maxage: float, deltaage: float,
-                         metal: str,
-                         phot_system: str,
+                         alpha: int, helium: int,
+                         ages: List[float],
+                         metal: int,
+                         phot_system: int,
                          request_num: int, total_requests: int) -> Optional[bytes]:
     """
     Submit a request to the MIST service using GET with query parameters.
@@ -290,25 +284,12 @@ def submit_mist_request(session,
     
     try:
         # Build query parameters
-        params = {
-            'version':	version,
-            'v_div_vcrit':	"vvcrit0.0",
-            'age_scale':	logage,
-            'age_value':	"",
-            'age_type':	"range",
-            'age_range_low':	minage,
-            'age_range_high':	maxage,
-            'age_range_delta':	deltaage,
-            'age_list':	"",
-            'FeH_value':	metal,
-            'alpha_value':	alpha,
-            'output_option':	"photometry",
-            'output':	phot_system,
-            'Av_value':	"0"
-        }
+        ages = '+'.join(ages.round(2).astype(str))
+
+        url = MIST_SUBMIT_URL + f'?int=1&out=1&age={ages}&feh={metal}&hel={helium}&afe={alpha}&clr={phot_system}&flt=&bin=&imf=1&pls=&lnm=&lns='
         
         # Make GET request with query parameters
-        r = requests.post(MIST_SUBMIT_URL, data=params, verify=False, timeout=6000)
+        r = requests.get(url, verify=False, timeout=6000)
         r.raise_for_status()
         
         # The response should contain the file data directly or a link
@@ -318,7 +299,7 @@ def submit_mist_request(session,
             # Try to find a download link
             for a in soup.find_all("a", href=True):
                 href = a["href"]
-                full_url = urljoin(MIST_BASE_URL, href)
+                full_url = urljoin('https://rcweb.dartmouth.edu/stellar/', href)
                 r2 = requests.get(full_url, verify=False, timeout=120)
                 r2.raise_for_status()
                 return r2.content
@@ -332,36 +313,6 @@ def submit_mist_request(session,
     
     except Exception as e:
         print(f"Error submitting request: {e}")
-        return None
-
-def extract_zip(zip_path: Path, extract_to: Path) -> Optional[Path]:
-    """
-    Extract .zip file and return the directory containing the isochrones.
-    
-    Args:
-        zip_path: path to .zip file
-        extract_to: directory to extract to
-    
-    Returns:
-        Path to extracted directory or None on failure
-    """
-    try:
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_to)
-        
-        # Find the extracted directory (usually there's one main folder)
-        extracted_items = list(extract_to.glob("*"))
-        extracted_items = [item for item in extracted_items if item.name != zip_path.name]
-        
-        if len(extracted_items) == 1 and extracted_items[0].is_dir():
-            extracted_dir = extracted_items[0]
-            return extracted_dir
-        else:
-            print(f"Warning: Unexpected extraction structure. Found {len(extracted_items)} items")
-            return extract_to
-    
-    except Exception as e:
-        print(f"Error extracting .zip: {e}")
         return None
 
 def move_files_up(source_dir: Path, target_dir: Path) -> int:
@@ -397,52 +348,54 @@ def move_files_up(source_dir: Path, target_dir: Path) -> int:
         print(f"Error moving files: {e}")
         return 0
 
-def merge_isochrones(filename,output_path,cut_evolutionary_phases=True):
-    files = glob.glob(str(output_path) + '/*.iso.*')
-    df_mist = pd.DataFrame()
+def merge_isochrones(filename,output_path):
+    files = glob.glob(str(output_path) + '/*.iso')
     
-    for f in files:
-        with open(f,'r') as _f:
-            header = _f.readlines()[12].split()[1:]
+    df_dartmouth = pd.DataFrame(columns=('Age','MoH','G','G-BP','G-RP','BP-RP','M'))
 
-        df = pd.read_csv(
-            f,
-            comment="#",
-            sep=r"\s+",
-            names=header
-        )
-
-        if 'log10_isochrone_age_yr' in df.columns:
-            df['Age'] = 10**df['log10_isochrone_age_yr']/10**9
+    for _f in files:
+        df = pd.DataFrame(columns=('Age','MoH','G','G-BP','G-RP','BP-RP','M'))
+        with open(_f,'r') as f:
+            for i,line in enumerate(f.readlines()):
+                if i == 8:
+                    continue
+                if i == 3:
+                    feh = float(line.split()[5])
+                if len(line.split()) < 2:
+                    continue
+                if line[0] == '#':
+                    if line[:2] == '#A':
+                        if len(line.split()) == 3:
+                            age = float(line.split()[1])
+                        else:
+                            age = float(line.split()[0].split('=')[-1])
+                    continue
+                M = float(line.split()[1])
+                G = float(line.split()[5])
+                BP = float(line.split()[6])
+                RP = float(line.split()[7])
+                BPRP = BP-RP
+                df.loc[i] = [age,feh,G,BP,RP,BPRP,M]
+        if len(df_dartmouth) == 0:
+            df_dartmouth = df
         else:
-            df['Age'] = 10**df['isochrone_age_yr']/10**9
-        df['G'] = df['Gaia_G_EDR3']
-        df['G-BP'] = df['Gaia_BP_EDR3']
-        df['G-RP'] = df['Gaia_RP_EDR3']
-        df['BP-RP'] = df['Gaia_BP_EDR3'] - df['Gaia_RP_EDR3']
-        df['MoH'] = df['[Fe/H]_init']
-        df['M'] = df['initial_mass'].astype(float)
+            df_dartmouth = pd.concat([df_dartmouth,df])
 
-        if cut_evolutionary_phases:
-            df = df[(df['phase'] != 6) & (df['phase'] != 5) & (df['Age'] > 1e-1)]
-        df_mist = pd.concat([df_mist,df])
+    df_dartmouth.to_csv(str(output_path) + '/' + filename,index=False)
 
-    df_mist.to_csv(str(output_path) + '/' + filename,index=False)
-
-    js_mist = {}
-    for moh in df_mist['MoH'].unique():
-        js_mist[str(moh)] = []
-        df = df_mist[df_mist['MoH'] == moh]
-        for age in df['Age'].unique():
-            dff = df[df['Age'] == age]
+    js_dartmouth = {}
+    for moh in df_dartmouth['MoH'].unique():
+        js_dartmouth[str(moh)] = []
+        for age in df_dartmouth['Age'].unique()[::2]:
+            df = df_dartmouth[df_dartmouth['Age'] == age]
             js_iso = {'age':float(age)}
-            js_iso['MG'] = dff['G'].values.tolist()
-            js_iso['BP-RP'] = dff['BP-RP'].tolist()
-            js_iso['M'] = dff['M'].values.tolist()
-            js_mist[str(moh)].append(js_iso)    
+            js_iso['MG'] = df['G'].values.tolist()
+            js_iso['BP-RP'] = df['BP-RP'].tolist()
+            js_iso['M'] = df['M'].values.tolist()
+            js_dartmouth[str(moh)].append(js_iso)
 
     with open(str(output_path) + '/' + filename.split('.')[0] + '.json','w') as f:
-        f.write(str(js_mist).replace('\'','"'))
+        f.write(str(js_dartmouth).replace('\'','"'))
 
 # ============================================================
 # Main Application
@@ -451,50 +404,40 @@ def merge_isochrones(filename,output_path,cut_evolutionary_phases=True):
 def interactive_isochrones_downloader():
     """Main application entry point."""
     
-    #Version
-    version = choose_option("MIST version",[['1.2','MIST1'],['2.5','MIST2']],'MIST2')
-    
     # Photometric system
 
     photo_options = [
-        ["CFHT/MegaCam","CFHTugriz"],
-        ["DECam","DECam"],
-        ["HST ACS/HRC","HST_ACS_HRC"],
-        ["HST ACS/SBC","HST_ACS_SBC"],
-        ["HST ACS/WFC","HST_ACS_WFC"],
-        ["HST WFC3/UVIS+IR","HST_WFC3"],
-        ["HST WFPC2","HST_WFPC2"],
-        ["INT / IPHAS","IPHAS"],
-        ["GALEX","GALEX"],
-        ["JWST NIRCAM","JWST"],
-        ["JWST NIRISS","NIRISS"],
-        ["PanSTARRS","PanSTARRS"],
-        ["Roman (formerly WFIRST)","Roman"],
-        ["Rubin / LSST","LSST"],
-        ["SDSS","SDSSugriz"],
-        ["SkyMapper","SkyMapper"],
-        ["Spitzer IRAC","SPITZER"],
-        ["S-PLUS","SPLUS"],
-        ["Subaru Hyper Suprime-Cam","HSC"],
-        ["Swift","Swift"],
-        ["UBV(RI)c + 2MASS + Kepler + Hipparcos + Gaia + Tess","UBVRIplus"],
-        ["UKIDSS","UKIDSS"],
-        ["UVIT","UVIT"],
-        ["VISTA","VISTA"],
-        ["Washington + Strömgren + DDO51","WashDDOuvby"],
-        ["WISE","WISE"]
+        ["UBV(RI)c + 2MASS + Kepler",1],
+        ["Washington + DDO51 + Stromgren",2],
+        ["HST/WFPC2",3],
+        ["HST/ACS-WFC",4],
+        ["HST/ACS-HRC",5],
+        ["HST/WFC3",6],
+        ["Spitzer-IRAC",7],
+        ["UKIDSS",8],
+        ["WISE",9],
+        ["CFHT-MegaCam ugriz",10],
+        ["SDSS ugriz",11],
+        ["PanSTARRS",12],
+        ["SkyMapper",13],
+        ["DECam ",14],
+        ["BV(RI)c+Stromgren",15],
+        ["Gaia DR2 Revised",16]
     ]
 
-    phot_system = choose_option("Photometric system", photo_options,'UBVRIplus')
+    phot_system = choose_option("Photometric system", photo_options,16)
 
     # ========================================================
     # Alpha Selection
     # ========================================================
     
-    if version == '2.5':
-        alpha = 'p0'
-    else:
-        alpha = choose_option('[⍺/Fe]',[['-0.2','m2'],['0.0','p0'],['0.2','p2'],['0.4','p4'],['0.6','p6']],'p0')
+    alpha = choose_option('[⍺/Fe]',[['-0.2',1],['0.0',2],['0.2',3],['0.4',4],['0.6',5],['0.8',6]],2)
+
+    # ========================================================
+    # Helium Selection
+    # ========================================================
+    
+    helium = choose_option('He',[['Y=0.245+1.5*Z',1],['Y=0.33',2],['Y=0.40',3]],1)
     
     # ========================================================
     # Age Selection
@@ -506,13 +449,16 @@ def interactive_isochrones_downloader():
     use_log_age = input("Use log(age/yr)? [Y/n] (default n): ").strip().lower() == "Y"
     
     if use_log_age:
-        age_min = float(input("log(age/yr) min (log(t)>5): "))
-        age_max = float(input("log(age/yr) max: (log(t)<10.3)"))
-        age_step = float(input("log(age/yr) step: "))
+        age_min = float(input("log(age/Gyr) min (t>=1 Gyr): "))
+        age_max = float(input("log(age/Gyr) max: (t<=15 Gyr)"))
+        age_step = float(input("log(age/Gyr) step: "))
+        ages = np.logspace(age_min,age_max,int((age_max-age_min)/age_step)+1)
+        
     else:
-        age_min = float(input("age (yr) min (log(t)>5): "))
-        age_max = float(input("age (yr) max (log(t)<10.3): "))
-        age_step = float(input("age (yr) step: "))
+        age_min = float(input("age (Gyr) min (t>=1 Gyr): "))
+        age_max = float(input("age (Gyr) max (t<=15 Gyr): "))
+        age_step = float(input("age (Gyr) step: "))
+        ages = np.linspace(age_min,age_max,int((age_max-age_min)/age_step)+1)
 
     if age_min >= age_max:
         raise UserWarning("Age max has to be bigger than age min.")
@@ -538,38 +484,30 @@ def interactive_isochrones_downloader():
     print("\n" + "=" * 70)
     print("Output Directory")
     print("=" * 70)
-    output_dir = input("Output directory [./MIST_isochrones]: ").strip() or "./MIST_isochrones"
+    output_dir = input("Output directory [./Dartmouth_isochrones]: ").strip() or "./Dartmouth_isochrones"
 
     download_isochrones(
         output_dir,
-        use_log_age,
-        age_min,age_max,age_step,
+        ages,
         met_min,met_max,met_step,
-        version,
+        helium,
         alpha,
         phot_system
     )
 
 def download_isochrones(
         output_dir,
-        use_log_age,
-        age_min,age_max,age_step,
+        ages,
         met_min,met_max,met_step,
-        version='2.5',
-        alpha="p0",
-        phot_system="UBVRIplus",
-        cut_evolutionary_phases=False,
+        helium=1,
+        alpha=2,
+        phot_system=16,
         use_tqdm=True
     ):
     if _has_urllib3 * _has_bs4 * _has_pandas * _has_requests == 0:
         raise modules_missing_error()
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-
-    if use_log_age:
-        use_log_age = 'log10'
-    else:
-        use_log_age = 'linear'
 
     metallicities = generate_grid(met_min, met_max, met_step)
     
@@ -593,11 +531,8 @@ def download_isochrones(
     for met in metallicities:
         requests_list.append(
             IsochroneRequest(
-                age_min=age_min,
-                age_max=age_max,
-                age_step=age_step,
-                metallicities=[met],
-                use_log_age=use_log_age,
+                ages=ages,
+                metallicities=[met]
             )
         )
 
@@ -612,53 +547,29 @@ def download_isochrones(
     for req_idx, request in loop:        
         # Format metallicity for query parameter
         content = submit_mist_request(
-            session, alpha, version, request.use_log_age, request.age_min, request.age_max, request.age_step, request.metallicities[0], phot_system,
+            session, alpha, helium, request.ages, request.metallicities[0], phot_system,
             req_idx, len(requests_list)
         )
 
         if content:
-            # Save tar.gz file temporarily
-            zip_filename = f"batch_{req_idx:03d}.zip"
-            zip_file = temp_dir / zip_filename
-            
-            with open(zip_file, "wb") as f:
+            filename = output_path / f'batch_{req_idx:03d}.iso'
+            with open(filename, "wb") as f:
                 f.write(content)
-            
-            # Extract .zip
-            batch_extract_dir = temp_dir / f"batch_{req_idx:03d}"
-            batch_extract_dir.mkdir(exist_ok=True)
-            
-            extracted_dir = extract_zip(zip_file, batch_extract_dir)
-            
-            if extracted_dir:
-                # Move files up to main output directory
-                files_moved = move_files_up(extracted_dir, output_path)
-                successful_downloads += request.n_isochrones
-                
-                # Record file info
-                downloaded_files.append(DownloadedFile(
-                    filename=zip_filename,
-                    age_min=request.age_min,
-                    age_max=request.age_max,
-                    age_step=request.age_step,
-                    metallicities=request.metallicities,
-                    use_log_age=use_log_age,
-                    n_isochrones=request.n_isochrones,
-                    timestamp=datetime.now().isoformat()
-                ))
-                
-                zip_file.unlink()
-                
-                time.sleep(1.0)
-            else:
-                print(f"Failed to extract batch {req_idx}")
+
+            downloaded_files.append(DownloadedFile(
+                filename=filename,
+                ages=request.ages,
+                metallicities=request.metallicities,
+                n_isochrones=request.n_isochrones,
+                timestamp=datetime.now().isoformat()
+            ))
         else:
             print(f"Failed to download batch {req_idx}")
     
     if temp_dir.exists():
         shutil.rmtree(temp_dir)
 
-    merge_isochrones('MIST_all.csv',output_path,cut_evolutionary_phases)
+    #merge_isochrones('Dartmouth_all.csv',output_path,cut_evolutionary_phases)
 
 if __name__ == "__main__":
     try:
