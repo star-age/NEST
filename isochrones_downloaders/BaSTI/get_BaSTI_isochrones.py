@@ -68,7 +68,6 @@ class IsochroneRequest:
     """Represents a batch request to BaSTI."""
     ages: List[float]
     metallicities: List[float]
-    use_log_age: bool
 
     @property
     def n_isochrones(self) -> int:
@@ -82,7 +81,6 @@ class DownloadedFile:
     filename: str
     ages: List[float]
     metallicities: List[float]
-    use_log_age: bool
     n_isochrones: int
     timestamp: str
 
@@ -97,7 +95,6 @@ class RunConfiguration:
     age_min: float
     age_max: float
     age_step: float
-    use_log_age: bool
     metallicity_mode: str  # 'Z' or '[Fe/H]'
     metallicity_min: float
     metallicity_max: float
@@ -211,12 +208,9 @@ def generate_grid(min_val: float, max_val: float, step: float) -> List[float]:
     Returns:
         List of grid points
     """
-    if step <= 0:
-        return [min_val]
-    
     grid = []
     current = min_val
-    while current <= max_val + 1e-10:  # Small tolerance for floating point
+    while current <= max_val + 1e-10:
         grid.append(current)
         current += step
     
@@ -246,7 +240,7 @@ def load_isc_file(filename: str) -> List[Tuple[str, str]]:
     return options
 
 
-def partition_requests(ages: List[float],metallicities: List[float],use_log_age: bool) -> List[IsochroneRequest]:
+def partition_requests(ages: List[float],metallicities: List[float]) -> List[IsochroneRequest]:
     """
     Partition the age-metallicity grid into requests of at most
     MAX_ISOCHRONES_PER_REQUEST isochrones.
@@ -263,8 +257,7 @@ def partition_requests(ages: List[float],metallicities: List[float],use_log_age:
             requests.append(
                 IsochroneRequest(
                     ages=ages[i:i + MAX_ISOCHRONES_PER_REQUEST],
-                    metallicities=[met],
-                    use_log_age=use_log_age,
+                    metallicities=[met]
                 )
             )
 
@@ -510,16 +503,9 @@ def interactive_isochrones_downloader():
     print("\n" + "=" * 70)
     print("Age Selection")
     print("=" * 70)
-    use_log_age = input("Use log(age/yr)? [Y/n] (default n): ").strip().lower() == "Y"
-    
-    if use_log_age:
-        age_min = float(input("log(age/yr) min: "))
-        age_max = float(input("log(age/yr) max: "))
-        age_step = float(input("log(age/yr) step: "))
-    else:
-        age_min = float(input("age (yr) min: "))
-        age_max = float(input("age (yr) max: "))
-        age_step = float(input("age (yr) step: "))
+    age_min = float(input("age (Myr) min: "))
+    age_max = float(input("age (Myr) max: "))
+    age_step = float(input("age (Myr) step: "))
     
     # ========================================================
     # Metallicity Selection (Grid range)
@@ -544,7 +530,6 @@ def interactive_isochrones_downloader():
 
     download_isochrones(
         output_dir,
-        use_log_age,
         age_min,age_max,age_step,
         met_min,met_max,met_step,
         alpha,
@@ -554,7 +539,6 @@ def interactive_isochrones_downloader():
 
 def download_isochrones(
         output_dir,
-        use_log_age,
         age_min,age_max,age_step,
         met_min,met_max,met_step,
         alpha="P00",
@@ -586,7 +570,7 @@ def download_isochrones(
     # Partition Requests
     # ========================================================
     
-    requests_list = partition_requests(ages, metallicities, use_log_age)
+    requests_list = partition_requests(ages, metallicities)
 
     
     # ========================================================
@@ -640,7 +624,6 @@ def download_isochrones(
                     filename=tar_filename,
                     ages=request.ages,
                     metallicities=request.metallicities,
-                    use_log_age=use_log_age,
                     n_isochrones=request.n_isochrones,
                     timestamp=datetime.now().isoformat()
                 ))
